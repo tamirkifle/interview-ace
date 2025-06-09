@@ -16,14 +16,14 @@ StoryBank is a modern interview preparation application that helps users prepare
 - Docker
 - Docker Compose
 
-### Starting Neo4j
+### Starting Services
 
-1. Start the Neo4j container:
+1. Start all services:
    ```bash
    docker-compose up -d
    ```
 
-2. Wait for the container to be healthy (this may take a few moments on first run)
+2. Wait for the containers to be healthy (this may take a few moments on first run)
 
 ### Accessing Neo4j Browser
 
@@ -37,6 +37,19 @@ StoryBank is a modern interview preparation application that helps users prepare
 - Browser Interface: http://localhost:7474
 - Bolt Connection: bolt://localhost:7687
 - Default Credentials: neo4j/password123
+
+### Accessing MinIO Console
+
+1. Open your web browser and navigate to: http://localhost:9001
+2. Login credentials:
+   - Username: admin
+   - Password: password123
+
+### MinIO Connection Details
+
+- Console Interface: http://localhost:9001
+- API Endpoint: http://localhost:9000
+- Default Credentials: admin/password123
 
 ## Development
 

@@ -1,6 +1,14 @@
 # Neo4j data
 neo4j/
 
+# MinIO data
+minio/
+.minio.sys/
+**/.minio.sys/
+**/tmp/
+**/config/
+**/buckets/
+
 # Environment variables
 .env
 
