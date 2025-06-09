@@ -41,61 +41,77 @@ export async function initializeDatabase(): Promise<void> {
     }
   ];
 
+  // Check existing constraints
+  const existingConstraints = await neo4jConnection.runQuery(
+    'SHOW CONSTRAINTS YIELD name'
+  );
+  const existingConstraintNames = new Set(
+    existingConstraints.records.map(record => record.get('name'))
+  );
+
   // Execute constraints
   const constraintResults: ConstraintResult[] = [];
   for (const constraint of constraints) {
     try {
-      await neo4jConnection.runQuery(constraint.query);
-      constraintResults.push({
-        name: constraint.name,
-        status: 'created'
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('already exists')) {
+      if (existingConstraintNames.has(constraint.name)) {
         constraintResults.push({
           name: constraint.name,
           status: 'already_exists'
         });
       } else {
+        await neo4jConnection.runQuery(constraint.query);
         constraintResults.push({
           name: constraint.name,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          status: 'created'
         });
       }
+    } catch (error) {
+      constraintResults.push({
+        name: constraint.name,
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
+
+  // Check existing indexes
+  const existingIndexes = await neo4jConnection.runQuery(
+    'SHOW INDEXES YIELD name'
+  );
+  const existingIndexNames = new Set(
+    existingIndexes.records.map(record => record.get('name'))
+  );
 
   // Execute indexes
   const indexResults: ConstraintResult[] = [];
   for (const index of indexes) {
     try {
-      await neo4jConnection.runQuery(index.query);
-      indexResults.push({
-        name: index.name,
-        status: 'created'
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('already exists')) {
+      if (existingIndexNames.has(index.name)) {
         indexResults.push({
           name: index.name,
           status: 'already_exists'
         });
       } else {
+        await neo4jConnection.runQuery(index.query);
         indexResults.push({
           name: index.name,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          status: 'created'
         });
       }
+    } catch (error) {
+      indexResults.push({
+        name: index.name,
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
 
   // Log results
-  console.log('\nConstraint Creation Results:');
+  console.log('\nConstraint Status:');
   constraintResults.forEach(result => {
     if (result.status === 'created') {
-      console.log(`✅ Created constraint: ${result.name}`);
+      console.log(`✅ Created new constraint: ${result.name}`);
     } else if (result.status === 'already_exists') {
       console.log(`ℹ️ Constraint already exists: ${result.name}`);
     } else {
@@ -103,10 +119,10 @@ export async function initializeDatabase(): Promise<void> {
     }
   });
 
-  console.log('\nIndex Creation Results:');
+  console.log('\nIndex Status:');
   indexResults.forEach(result => {
     if (result.status === 'created') {
-      console.log(`✅ Created index: ${result.name}`);
+      console.log(`✅ Created new index: ${result.name}`);
     } else if (result.status === 'already_exists') {
       console.log(`ℹ️ Index already exists: ${result.name}`);
     } else {
