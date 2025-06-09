@@ -1,7 +1,12 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+import { json } from 'body-parser';
 import { neo4jConnection } from './db/neo4j';
+import { typeDefs } from './graphql/schema';
+import { resolvers } from './graphql/resolvers';
 
 // Load environment variables
 dotenv.config();
@@ -34,17 +39,41 @@ async function initializeDatabase() {
   }
 }
 
+// Initialize Apollo Server
+async function startApolloServer() {
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+  });
+
+  await server.start();
+
+  // Apply Apollo middleware
+  app.use(
+    '/graphql',
+    json(),
+    expressMiddleware(server, {
+      context: async () => ({
+        // Add any context properties here
+      }),
+    })
+  );
+
+  console.log('Apollo Server started at /graphql');
+}
+
 // Start server
-const server = app.listen(port, async () => {
+const httpServer = app.listen(port, async () => {
   console.log(`Server is running on http://localhost:${port}`);
   await initializeDatabase();
+  await startApolloServer();
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received. Closing server and Neo4j connection...');
   await neo4jConnection.close();
-  server.close(() => {
+  httpServer.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
