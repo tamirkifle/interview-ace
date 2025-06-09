@@ -1,7 +1,10 @@
 import { neo4jConnection } from '../../db/neo4j';
 import neo4j from 'neo4j-driver';
+import { dateTimeScalar } from '../schema/scalars';
 
 export const resolvers = {
+  DateTime: dateTimeScalar,
+  
   Query: {
     health: () => 'ok',
     nodeCount: async () => {
