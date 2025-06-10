@@ -47,12 +47,12 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: storybank-backend
+      dockerfile: Dockerfile.dev
+    container_name: storybank-backend-dev
     ports:
       - "4000:4000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=4000
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
@@ -61,6 +61,10 @@ services:
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=admin
       - MINIO_SECRET_KEY=password123
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
     depends_on:
       neo4j:
         condition: service_healthy

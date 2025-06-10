@@ -14,6 +14,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Middleware
 app.use(cors());
@@ -47,6 +48,8 @@ async function startApolloServer() {
   const server = new ApolloServer({
     typeDefs,
     resolvers,
+    // Enable playground in development
+    introspection: isDevelopment,
   });
 
   await server.start();
@@ -62,7 +65,7 @@ async function startApolloServer() {
     })
   );
 
-  console.log('Apollo Server started at /graphql');
+  console.log(`Apollo Server started at /graphql${isDevelopment ? ' (Playground enabled)' : ''}`);
 }
 
 // Start server
