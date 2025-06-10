@@ -7,5 +7,10 @@ export const typeDefs = gql`
   type Query {
     health: String!
     nodeCount: Int!
+    stories: [Story!]!
+    story(id: ID!): Story
+    categories: [Category!]!
+    traits: [Trait!]!
+    questions: [Question!]!
   }
 `; 

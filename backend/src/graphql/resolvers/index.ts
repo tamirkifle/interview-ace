@@ -1,6 +1,7 @@
-import { neo4jConnection } from '../../db/neo4j';
-import neo4j from 'neo4j-driver';
+import { StoryService } from '../../services/storyService';
 import { dateTimeScalar } from '../schema/scalars';
+
+const storyService = new StoryService();
 
 export const resolvers = {
   DateTime: dateTimeScalar,
@@ -8,17 +9,44 @@ export const resolvers = {
   Query: {
     health: () => 'ok',
     nodeCount: async () => {
-      try {
-        const result = await neo4jConnection.runQuery(
-          'MATCH (n) RETURN count(n) as count'
-        );
-        const count = result.records[0].get('count');
-        // Handle Neo4j integer type
-        return neo4j.isInt(count) ? count.toNumber() : Number(count);
-      } catch (error) {
-        console.error('Error getting node count:', error);
-        throw new Error('Failed to get node count');
-      }
+      const stories = await storyService.getAllStories();
+      return stories.length;
+    },
+    stories: async () => {
+      return storyService.getAllStories();
+    },
+    story: async (_: any, { id }: { id: string }) => {
+      return storyService.getStoryById(id);
+    },
+    categories: async () => {
+      // TODO: Implement category service
+      return [];
+    },
+    traits: async () => {
+      // TODO: Implement trait service
+      return [];
+    },
+    questions: async () => {
+      // TODO: Implement question service
+      return [];
+    }
+  },
+  Story: {
+    categories: async (parent: { id: string }) => {
+      return storyService.getStoryCategories(parent.id);
+    },
+    traits: async (parent: { id: string }) => {
+      return storyService.getStoryTraits(parent.id);
+    }
+  },
+  Question: {
+    categories: async (parent: { id: string }) => {
+      // TODO: Implement question categories
+      return [];
+    },
+    traits: async (parent: { id: string }) => {
+      // TODO: Implement question traits
+      return [];
     }
   }
 }; 
