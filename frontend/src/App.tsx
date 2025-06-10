@@ -1,29 +1,22 @@
-import { useHealthCheck } from './hooks/useHealthCheck';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Layout } from './components/layout/Layout';
+import { Dashboard } from './pages/Dashboard';
+import { Stories } from './pages/Stories';
+import { Practice } from './pages/Practice';
+import { Analytics } from './pages/Analytics';
 
 function App() {
-  const { isConnected, isLoading, error } = useHealthCheck();
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-center text-indigo-600 mb-8">
-          Interview Prep Studio
-        </h1>
-        <div className="text-center">
-          {isLoading ? (
-            <p className="text-gray-600">Checking backend connection...</p>
-          ) : isConnected ? (
-            <p className="text-green-600 font-medium">
-              Connected to Backend ✓
-            </p>
-          ) : (
-            <p className="text-red-600 font-medium">
-              Backend Connection Error: {error}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="stories" element={<Stories />} />
+          <Route path="practice" element={<Practice />} />
+          <Route path="analytics" element={<Analytics />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
