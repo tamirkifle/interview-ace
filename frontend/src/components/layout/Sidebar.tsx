@@ -1,15 +1,27 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+import { getIcon } from '../../utils/categoryIcons';
 
 const navigation = [
-  { name: 'Dashboard', path: '/', icon: '📊' },
-  { name: 'Stories', path: '/stories', icon: '📝' },
-  { name: 'Practice', path: '/practice', icon: '🎯' },
-  { name: 'Analytics', path: '/analytics', icon: '📈' },
+  { name: 'Dashboard', path: '/' },
+  { name: 'Stories', path: '/stories' },
+  { name: 'Practice', path: '/practice' },
+  { name: 'Analytics', path: '/analytics' },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onCollapse: (collapsed: boolean) => void;
+}
+
+export const Sidebar = ({ onCollapse }: SidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    onCollapse(newState);
+  };
 
   return (
     <aside 
@@ -17,36 +29,49 @@ export const Sidebar = () => {
         isCollapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-6 bg-white border border-gray-200 rounded-full p-1.5 hover:bg-gray-50 shadow-sm text-gray-600 hover:text-gray-900"
-      >
-        <span className="block w-4 h-4 text-center leading-4">
-          {isCollapsed ? '→' : '←'}
-        </span>
-      </button>
-      <nav className="h-full py-6 px-3">
+      <div className="h-16 flex items-center px-3 border-b border-gray-200">
+        <button
+          onClick={handleCollapse}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+        >
+          <span className="w-5 h-5 flex items-center justify-center">
+            {isCollapsed ? (
+              <Menu className="w-5 h-5" />
+            ) : (
+              <X className="w-5 h-5" />
+            )}
+          </span>
+        </button>
+      </div>
+      <nav className="h-[calc(100%-4rem)] py-4 px-3">
         <div className="space-y-1">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              className={({ isActive }) =>
-                `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                  isActive
-                    ? 'bg-primary-50 text-primary-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              <span className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`}>
-                {item.icon}
-              </span>
-              {!isCollapsed && (
-                <span className="truncate">{item.name}</span>
-              )}
-            </NavLink>
-          ))}
+          {navigation.map((item) => {
+            const Icon = getIcon(item.name);
+            return (
+              <NavLink
+                key={item.name}
+                to={item.path}
+                className={({ isActive }) =>
+                  `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-primary-50 text-primary-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <span className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                  isCollapsed ? 'mx-auto' : 'mr-3'
+                }`}>
+                  <Icon className="w-5 h-5" />
+                </span>
+                {!isCollapsed && (
+                  <span className="truncate transition-transform duration-200 group-hover:translate-x-1">
+                    {item.name}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </aside>
