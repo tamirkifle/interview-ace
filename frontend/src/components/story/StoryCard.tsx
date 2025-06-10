@@ -17,7 +17,7 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
   return (
     <div
       className={`
-        bg-white rounded-lg border border-gray-200 p-6 
+        flex flex-col bg-white rounded-lg border border-gray-200 p-6 
         transition-all duration-200 ease-out
         hover:shadow-md hover:border-gray-300 hover:-translate-y-1
         ${onClick ? 'cursor-pointer' : ''}
@@ -86,7 +86,7 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
         )}
 
       {/* Footer with metadata */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
         <div className="text-xs text-gray-500">
           {story.updatedAt && (
             <>
