@@ -13,6 +13,7 @@
     "@apollo/client": "^3.13.8",
     "@types/react-router-dom": "^5.3.3",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "graphql": "^16.11.0",
     "lucide-react": "^0.513.0",
     "react": "^19.1.0",

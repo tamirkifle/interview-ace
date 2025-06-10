@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.8"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0"
   }
 }
