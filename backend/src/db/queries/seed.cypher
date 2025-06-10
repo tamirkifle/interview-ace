@@ -114,13 +114,13 @@ MERGE (s)-[:BELONGS_TO]->(c);
 // Create relationships between Stories and Traits
 MATCH (s:Story {id: 'story-leadership-challenge'})
 MATCH (t:Trait)
-WHERE t.id IN ['trait-leadership', 'trait-problem-solving']
+WHERE t.id IN ['trait-ownership', 'trait-influence', 'trait-execution']
 WITH s, t
 MERGE (s)-[:DEMONSTRATES]->(t);
 
 MATCH (s:Story {id: 'story-technical-challenge'})
 MATCH (t:Trait)
-WHERE t.id IN ['trait-technical-expertise', 'trait-crisis-management']
+WHERE t.id IN ['trait-analytical-thinking', 'trait-execution', 'trait-resilience']
 WITH s, t
 MERGE (s)-[:DEMONSTRATES]->(t);
 
@@ -521,6 +521,4 @@ MATCH (q:Question {id: 'q-identify-problem'})
 MATCH (t:Trait)
 WHERE t.id IN ['trait-initiative', 'trait-analytical-thinking', 'trait-ownership']
 WITH q, t
-MATCH (q:Question), (t:Trait)
-WHERE q.id = 'q-identify-problem' AND t.id IN ['trait-initiative', 'trait-analytical-thinking', 'trait-ownership']
-MERGE (q)-[:TESTS_FOR]->(t); 
+MERGE (q)-[:TESTS_FOR]->(t);
