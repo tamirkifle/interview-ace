@@ -1,6 +1,7 @@
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Story } from '../../types';
 import { Badge } from '../ui';
+import { Tag, Folder } from 'lucide-react';
 
 interface StoryCardProps {
   story: Story;
@@ -46,38 +47,43 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
       {/* Category Badges */}
       {story.categories && story.categories.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
-          {story.categories.map((category) => (
+            {story.categories.map((category) => (
             <Badge
-              key={category.id}
-              variant="colored"
-              color={category.color}
-              size="sm"
+                key={category.id}
+                variant="colored"
+                color={category.color}
+                size="sm"
+                className="flex items-center gap-1"
             >
-              {category.name}
+                <Folder className="w-3 h-3" />
+                {category.name}
             </Badge>
-          ))}
+            ))}
         </div>
-      )}
+        )}
 
       {/* Trait Tags */}
       {story.traits && story.traits.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
-          {story.traits.slice(0, 4).map((trait) => (
+            {story.traits.slice(0, 4).map((trait) => (
             <Badge
-              key={trait.id}
-              variant="outline"
-              size="xs"
+                key={trait.id}
+                variant="outline"
+                size="xs"
+                className="flex items-center gap-1"
             >
-              {trait.name}
+                <Tag className="w-2.5 h-2.5" />
+                {trait.name}
             </Badge>
-          ))}
-          {story.traits.length > 4 && (
-            <Badge variant="outline" size="xs">
-              +{story.traits.length - 4} more
+            ))}
+            {story.traits.length > 4 && (
+            <Badge variant="outline" size="xs" className="flex items-center gap-1">
+                <Tag className="w-2.5 h-2.5" />
+                +{story.traits.length - 4} more
             </Badge>
-          )}
+            )}
         </div>
-      )}
+        )}
 
       {/* Footer with metadata */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
