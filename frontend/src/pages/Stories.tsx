@@ -5,10 +5,10 @@ import { Story } from '../types';
 import { LoadingSpinner, ErrorMessage, SkeletonLoader } from '../components/ui';
 import { StoryCard } from '../components/story/StoryCard';
 import { useState } from 'react';
-import { CreateStoryModal } from '../components/story/CreateStoryModal';
+import { useNavigate } from 'react-router-dom';
 
 export const Stories = () => {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(GET_STORIES);
 
   if (loading) {
@@ -64,8 +64,8 @@ export const Stories = () => {
         </div>
         <button
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
-          onClick={() => setIsCreateModalOpen(true)}
-        >
+          onClick={() => navigate('/stories/new')}
+          >
           <Plus className="w-5 h-5 mr-2" />
           New Story
         </button>
@@ -84,8 +84,8 @@ export const Stories = () => {
             </p>
             <button
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
+              onClick={() => navigate('/stories/new')}
+              >
               <Plus className="w-5 h-5 mr-2" />
               Add Your First Story
             </button>
@@ -105,10 +105,6 @@ export const Stories = () => {
           ))}
         </div>
       )}
-      <CreateStoryModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
     </div>
   );
 };

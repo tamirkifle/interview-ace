@@ -14,7 +14,7 @@ export const Layout = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarCollapsed ? 'ml-16' : 'ml-64'
         }`}>
-          <div className="container px-6 py-8">
+          <div className="px-6 py-8">
             <Outlet />
           </div>
         </main>
