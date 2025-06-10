@@ -173,4 +173,58 @@ export class StoryService {
       await session.close();
     }
   }
+
+  async createStory(input: {
+    title: string;
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+    categoryIds?: string[];
+  }): Promise<Story> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const id = `story-${Date.now()}`;
+      const now = new Date().toISOString();
+      
+      const result = await session.run(`
+        CREATE (s:Story {
+          id: $id,
+          title: $title,
+          situation: $situation,
+          task: $task,
+          action: $action,
+          result: $result,
+          createdAt: $createdAt,
+          updatedAt: $updatedAt
+        })
+        ${input.categoryIds && input.categoryIds.length > 0 ? `
+        WITH s
+        MATCH (c:Category)
+        WHERE c.id IN $categoryIds
+        MERGE (s)-[:BELONGS_TO]->(c)
+        ` : ''}
+        RETURN s
+      `, {
+        id,
+        title: input.title,
+        situation: input.situation,
+        task: input.task,
+        action: input.action,
+        result: input.result,
+        createdAt: now,
+        updatedAt: now,
+        categoryIds: input.categoryIds || []
+      });
+      
+      return {
+        ...result.records[0].get('s').properties,
+        categories: [],
+        traits: [],
+        recordings: []
+      };
+    } finally {
+      await session.close();
+    }
+  }
 } 

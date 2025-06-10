@@ -49,6 +49,12 @@ export const resolvers = {
     }
   },
 
+  Mutation: {
+    createStory: async (_: any, { input }: { input: any }) => {
+      return storyService.createStory(input);
+    }
+  },
+
   Story: {
     categories: async (parent: { id: string }) => {
       return storyService.getStoryCategories(parent.id);

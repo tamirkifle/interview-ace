@@ -80,4 +80,17 @@ export const typeDefs = gql`
     question(id: ID!): Question
     recording(id: ID!): Recording
   }
+
+  input CreateStoryInput {
+    title: String!
+    situation: String!
+    task: String!
+    action: String!
+    result: String!
+    categoryIds: [ID!]
+  }
+
+  type Mutation {
+    createStory(input: CreateStoryInput!): Story!
+  }
 `; 

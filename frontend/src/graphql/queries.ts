@@ -74,3 +74,27 @@ export const GET_QUESTIONS = gql`
     }
   }
 `; 
+
+export const CREATE_STORY = gql`
+  mutation CreateStory($input: CreateStoryInput!) {
+    createStory(input: $input) {
+      id
+      title
+      situation
+      task
+      action
+      result
+      createdAt
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;

@@ -13,4 +13,8 @@ export const typeDefs = gql`
     traits: [Trait!]!
     questions: [Question!]!
   }
+
+  type Mutation {
+    createStory(input: CreateStoryInput!): Story!
+  }
 `; 
