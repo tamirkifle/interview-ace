@@ -46,7 +46,7 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
 
       {/* Category Badges */}
       {story.categories && story.categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mt-auto mb-3">
             {story.categories.map((category) => (
             <Badge
                 key={category.id}
