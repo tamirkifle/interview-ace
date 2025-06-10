@@ -203,8 +203,11 @@ export class StoryService {
         MATCH (c:Category)
         WHERE c.id IN $categoryIds
         MERGE (s)-[:BELONGS_TO]->(c)
-        ` : ''}
-        RETURN s
+        WITH s, collect(c) as categories
+        RETURN s, categories
+        ` : `
+        RETURN s, [] as categories
+        `}
       `, {
         id,
         title: input.title,
@@ -217,9 +220,13 @@ export class StoryService {
         categoryIds: input.categoryIds || []
       });
       
+      const storyRecord = result.records[0];
+      const story = storyRecord.get('s').properties;
+      const categories = storyRecord.get('categories').map((c: any) => c.properties);
+      
       return {
-        ...result.records[0].get('s').properties,
-        categories: [],
+        ...story,
+        categories,
         traits: [],
         recordings: []
       };

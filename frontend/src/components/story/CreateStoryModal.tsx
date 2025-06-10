@@ -3,7 +3,8 @@ import { Dialog, Transition } from '@headlessui/react';
 import { X, Plus } from 'lucide-react';
 import { useMutation } from '@apollo/client';
 import { CREATE_STORY, GET_STORIES } from '../../graphql/queries';
-import { LoadingSpinner } from '../ui';
+import { LoadingSpinner, MultiSelect } from '../ui';
+import { useCategories } from '../../hooks/useCategories';
 
 interface CreateStoryModalProps {
   isOpen: boolean;
@@ -16,8 +17,12 @@ export const CreateStoryModal = ({ isOpen, onClose }: CreateStoryModalProps) => 
     situation: '',
     task: '',
     action: '',
-    result: ''
+    result: '',
+    categoryIds: [] as string[]
   });
+
+  const { categories, loading: categoriesLoading } = useCategories();
+
 
   const [createStory, { loading }] = useMutation(CREATE_STORY, {
     refetchQueries: [{ query: GET_STORIES }],
@@ -28,7 +33,8 @@ export const CreateStoryModal = ({ isOpen, onClose }: CreateStoryModalProps) => 
         situation: '',
         task: '',
         action: '',
-        result: ''
+        result: '',
+        categoryIds: []
       });
     }
   });
@@ -40,7 +46,10 @@ export const CreateStoryModal = ({ isOpen, onClose }: CreateStoryModalProps) => 
     try {
       await createStory({
         variables: {
-          input: formData
+          input: {
+            ...formData,
+            categoryIds: formData.categoryIds.length > 0 ? formData.categoryIds : undefined
+          }
         }
       });
     } catch (error) {
@@ -114,6 +123,28 @@ export const CreateStoryModal = ({ isOpen, onClose }: CreateStoryModalProps) => 
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Categories
+                        <span className="text-xs text-gray-500 font-normal ml-1">(optional)</span>
+                    </label>
+                    {categoriesLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                        <LoadingSpinner size="sm" text="Loading categories..." />
+                        </div>
+                    ) : (
+                        <MultiSelect
+                        categories={categories}
+                        selectedIds={formData.categoryIds}
+                        onChange={(categoryIds) => setFormData(prev => ({ ...prev, categoryIds }))}
+                        placeholder="Search and select categories..."
+                        />
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                        Choose categories that best describe what this story demonstrates
+                    </p>
+                    </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Situation
                     </label>
                     <textarea
@@ -163,6 +194,7 @@ export const CreateStoryModal = ({ isOpen, onClose }: CreateStoryModalProps) => 
                       placeholder="What was the outcome? Include metrics if possible..."
                     />
                   </div>
+
 
                   <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                     <button
