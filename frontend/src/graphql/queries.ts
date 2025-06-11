@@ -71,10 +71,13 @@ export const GET_QUESTIONS = gql`
       categories {
         id
         name
+        color
+        description
       }
       traits {
         id
         name
+        description
       }
     }
   }
