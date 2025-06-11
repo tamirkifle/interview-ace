@@ -522,3 +522,13 @@ MATCH (t:Trait)
 WHERE t.id IN ['trait-initiative', 'trait-analytical-thinking', 'trait-ownership']
 WITH q, t
 MERGE (q)-[:TESTS_FOR]->(t);
+
+// Create ANSWERS relationships between Stories and Questions based on shared categories
+MATCH (s:Story)-[:BELONGS_TO]->(c:Category)<-[:TESTS_FOR]-(q:Question)
+WITH s, q, count(DISTINCT c) as sharedCategories
+WHERE sharedCategories >= 1
+WITH s, q, sharedCategories
+MATCH (s)-[:DEMONSTRATES]->(t:Trait)<-[:TESTS_FOR]-(q)
+WITH s, q, sharedCategories, count(DISTINCT t) as sharedTraits
+WHERE sharedCategories >= 1 OR sharedTraits >= 1
+MERGE (s)-[:ANSWERS]->(q);

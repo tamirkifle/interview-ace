@@ -31,6 +31,7 @@ export interface Story {
   categories: Category[];
   traits: Trait[];
   recordings: Recording[];
+  questions: Question[];
 }
 
 export interface Question {

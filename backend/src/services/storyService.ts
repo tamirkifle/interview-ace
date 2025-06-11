@@ -147,17 +147,25 @@ export class StoryService {
     const session = await neo4jConnection.getSession();
     try {
       const result = await session.run(`
+        // Find stories that can answer this question based on shared categories and traits
         MATCH (q:Question {id: $questionId})-[:TESTS_FOR]->(c:Category)
         MATCH (s:Story)-[:BELONGS_TO]->(c)
-        WITH s, q, count(c) as categoryMatches
-        MATCH (q)-[:TESTS_FOR]->(t:Trait)
-        MATCH (s)-[:DEMONSTRATES]->(t)
-        WITH s, q, categoryMatches, count(t) as traitMatches
-        WITH s, q, categoryMatches, traitMatches,
-             (categoryMatches + traitMatches) * 1.0 / 5 as relevanceScore
-        MATCH (s)-[:BELONGS_TO]->(c:Category)
-        MATCH (s)-[:DEMONSTRATES]->(t:Trait)
-        WITH s, relevanceScore, collect(DISTINCT c) as matchedCategories, collect(DISTINCT t) as matchedTraits
+        WITH s, q, collect(DISTINCT c) as matchedCategories, count(DISTINCT c) as categoryMatches
+        
+        OPTIONAL MATCH (q)-[:TESTS_FOR]->(t:Trait)
+        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(t)
+        WITH s, q, matchedCategories, categoryMatches, 
+             collect(DISTINCT t) as matchedTraits, count(DISTINCT t) as traitMatches
+        
+        // Calculate relevance score (categories weighted higher than traits)
+        WITH s, q, matchedCategories, matchedTraits,
+             (categoryMatches * 2.0 + traitMatches * 1.0) as totalScore,
+             (categoryMatches + traitMatches) as totalMatches
+        
+        WHERE totalMatches > 0
+        WITH s, q, matchedCategories, matchedTraits,
+             (totalScore / 5.0) as relevanceScore
+        
         RETURN s, relevanceScore, matchedCategories, matchedTraits
         ORDER BY relevanceScore DESC
         LIMIT $limit
@@ -165,7 +173,7 @@ export class StoryService {
       
       return result.records.map((record: Record) => ({
         story: record.get('s').properties,
-        relevanceScore: record.get('relevanceScore'),
+        relevanceScore: Math.min(record.get('relevanceScore'), 1.0), // Cap at 100%
         matchedCategories: record.get('matchedCategories').map((c: any) => c.properties),
         matchedTraits: record.get('matchedTraits').map((t: any) => t.properties)
       }));
@@ -203,8 +211,16 @@ export class StoryService {
         MATCH (c:Category)
         WHERE c.id IN $categoryIds
         MERGE (s)-[:BELONGS_TO]->(c)
-        WITH s, collect(c) as categories
-        RETURN s, categories
+        
+        // Automatically create ANSWERS relationships with questions that share categories
+        WITH s
+        MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q:Question)
+        MERGE (s)-[:ANSWERS]->(q)
+        
+        // Return story with its categories
+        WITH s
+        MATCH (s)-[:BELONGS_TO]->(c:Category)
+        RETURN s, collect(c) as categories
         ` : `
         RETURN s, [] as categories
         `}
@@ -222,7 +238,7 @@ export class StoryService {
       
       const storyRecord = result.records[0];
       const story = storyRecord.get('s').properties;
-      const categories = storyRecord.get('categories').map((c: any) => c.properties);
+      const categories = storyRecord.get('categories')?.map((c: any) => c.properties) || [];
       
       return {
         ...story,
@@ -230,6 +246,21 @@ export class StoryService {
         traits: [],
         recordings: []
       };
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getStoryQuestions(storyId: string): Promise<Question[]> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (s:Story {id: $storyId})-[:ANSWERS]->(q:Question)
+        RETURN q
+        ORDER BY q.text
+      `, { storyId });
+      
+      return result.records.map((record: Record) => record.get('q').properties);
     } finally {
       await session.close();
     }

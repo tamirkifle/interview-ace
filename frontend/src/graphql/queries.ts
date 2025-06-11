@@ -29,6 +29,11 @@ export const GET_STORIES = gql`
         minio_key
         createdAt
       }
+      questions {
+        id
+        text
+        difficulty
+      }
     }
   }
 `;

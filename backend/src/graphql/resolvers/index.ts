@@ -64,6 +64,9 @@ export const resolvers = {
     },
     recordings: async (parent: { id: string }) => {
       return storyService.getStoryRecordings(parent.id);
+    },
+    questions: async (parent: { id: string }) => {
+      return storyService.getStoryQuestions(parent.id);
     }
   },
 

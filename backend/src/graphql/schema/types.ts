@@ -15,6 +15,7 @@ export const typeDefs = gql`
     categories: [Category!]!
     traits: [Trait!]!
     recordings: [Recording!]!
+    questions: [Question!]!
   }
   
   type Category {
