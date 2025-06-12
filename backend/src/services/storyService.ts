@@ -1,5 +1,6 @@
 import { neo4jConnection } from '../db/neo4j';
 import { Record } from 'neo4j-driver';
+import { processRecordProperties } from '../utils/dateTime';
 
 export interface Story {
   id: string;
@@ -55,25 +56,6 @@ export interface StoryMatch {
 }
 
 export class StoryService {
-  // Helper method to normalize dates consistently
-  private normalizeDates(props: any): any {
-    const normalized = { ...props };
-    
-    if (props.createdAt) {
-      normalized.createdAt = props.createdAt instanceof Date 
-        ? props.createdAt.toISOString() 
-        : new Date(props.createdAt).toISOString();
-    }
-    
-    if (props.updatedAt) {
-      normalized.updatedAt = props.updatedAt instanceof Date 
-        ? props.updatedAt.toISOString() 
-        : new Date(props.updatedAt).toISOString();
-    }
-    
-    return normalized;
-  }
-
   async getAllStories(): Promise<Story[]> {
     const session = await neo4jConnection.getSession();
     try {
@@ -82,10 +64,9 @@ export class StoryService {
         RETURN s
         ORDER BY s.createdAt DESC
       `);
-      return result.records.map((record: Record) => {
-        const props = record.get('s').properties;
-        return this.normalizeDates(props);
-      });
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('s').properties)
+      );
     } finally {
       await session.close();
     }
@@ -103,8 +84,7 @@ export class StoryService {
         return null;
       }
       
-      const props = result.records[0].get('s').properties;
-      return this.normalizeDates(props);
+      return processRecordProperties(result.records[0].get('s').properties);
     } finally {
       await session.close();
     }
@@ -119,10 +99,9 @@ export class StoryService {
         ORDER BY c.name
       `, { storyId });
       
-      return result.records.map((record: Record) => {
-        const props = record.get('c').properties;
-        return this.normalizeDates(props);
-      });
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('c').properties)
+      );
     } finally {
       await session.close();
     }
@@ -137,10 +116,9 @@ export class StoryService {
         ORDER BY t.name
       `, { storyId });
       
-      return result.records.map((record: Record) => {
-        const props = record.get('t').properties;
-        return this.normalizeDates(props);
-      });
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('t').properties)
+      );
     } finally {
       await session.close();
     }
@@ -155,10 +133,9 @@ export class StoryService {
         ORDER BY r.createdAt DESC
       `, { storyId });
       
-      return result.records.map((record: Record) => {
-        const props = record.get('r').properties;
-        return this.normalizeDates(props);
-      });
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('r').properties)
+      );
     } finally {
       await session.close();
     }
@@ -172,7 +149,6 @@ export class StoryService {
       const result = await session.run(`
         // Get all stories and calculate their relevance to this question
         MATCH (q:Question {id: $questionId})
-        USING INDEX q:Question(id)
         MATCH (s:Story)
         
         // Get question's categories and traits
@@ -215,10 +191,14 @@ export class StoryService {
       `, { questionId, limit: intLimit });
       
       return result.records.map((record: Record) => ({
-        story: this.normalizeDates(record.get('s').properties),
+        story: processRecordProperties(record.get('s').properties),
         relevanceScore: record.get('relevanceScore'),
-        matchedCategories: record.get('matchedCategories').map((c: any) => this.normalizeDates(c.properties)),
-        matchedTraits: record.get('matchedTraits').map((t: any) => this.normalizeDates(t.properties))
+        matchedCategories: record.get('matchedCategories').map((c: any) => 
+          processRecordProperties(c.properties)
+        ),
+        matchedTraits: record.get('matchedTraits').map((t: any) => 
+          processRecordProperties(t.properties)
+        )
       }));
     } finally {
       await session.close();
@@ -232,7 +212,6 @@ export class StoryService {
     action: string;
     result: string;
     categoryIds?: string[];
-    traitIds?: string[];
   }): Promise<Story> {
     const session = await neo4jConnection.getSession();
     try {
@@ -250,30 +229,24 @@ export class StoryService {
           createdAt: $createdAt,
           updatedAt: $updatedAt
         })
-        
-        // Handle category relationships
         ${input.categoryIds && input.categoryIds.length > 0 ? `
         WITH s
         MATCH (c:Category)
         WHERE c.id IN $categoryIds
         MERGE (s)-[:BELONGS_TO]->(c)
-        ` : ''}
-        
-        // Handle trait relationships
-        ${input.traitIds && input.traitIds.length > 0 ? `
-        WITH s
-        MATCH (t:Trait)
-        WHERE t.id IN $traitIds
-        MERGE (s)-[:DEMONSTRATES]->(t)
-        ` : ''}
         
         // Automatically create ANSWERS relationships with questions that share categories
         WITH s
         MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q:Question)
         MERGE (s)-[:ANSWERS]->(q)
         
-        // Return story
-        RETURN s
+        // Return story with its categories
+        WITH s
+        MATCH (s)-[:BELONGS_TO]->(c:Category)
+        RETURN s, collect(c) as categories
+        ` : `
+        RETURN s, [] as categories
+        `}
       `, {
         id,
         title: input.title,
@@ -283,14 +256,21 @@ export class StoryService {
         result: input.result,
         createdAt: now,
         updatedAt: now,
-        categoryIds: input.categoryIds || [],
-        traitIds: input.traitIds || []
+        categoryIds: input.categoryIds || []
       });
       
       const storyRecord = result.records[0];
-      const story = this.normalizeDates(storyRecord.get('s').properties);
+      const story = processRecordProperties(storyRecord.get('s').properties);
+      const categories = storyRecord.get('categories')?.map((c: any) => 
+        processRecordProperties(c.properties)
+      ) || [];
       
-      return story;
+      return {
+        ...story,
+        categories,
+        traits: [],
+        recordings: []
+      };
     } finally {
       await session.close();
     }
@@ -305,10 +285,9 @@ export class StoryService {
         ORDER BY q.text
       `, { storyId });
       
-      return result.records.map((record: Record) => {
-        const props = record.get('q').properties;
-        return this.normalizeDates(props);
-      });
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('q').properties)
+      );
     } finally {
       await session.close();
     }
