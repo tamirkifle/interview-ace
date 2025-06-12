@@ -94,6 +94,7 @@ export const typeDefs = gql`
     action: String!
     result: String!
     categoryIds: [ID!]
+    traitIds: [ID!]
   }
 
   type Mutation {

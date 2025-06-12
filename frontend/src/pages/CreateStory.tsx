@@ -4,11 +4,13 @@ import { useMutation } from '@apollo/client';
 import { ArrowLeft, Plus, Save } from 'lucide-react';
 import { CREATE_STORY, GET_STORIES } from '../graphql/queries';
 import { useCategories } from '../hooks/useCategories';
+import { useTraits } from '../hooks/useTraits';
 import { LoadingSpinner, MultiSelect } from '../components/ui';
 
 export const CreateStory = () => {
   const navigate = useNavigate();
   const { categories, loading: categoriesLoading } = useCategories();
+  const { traits, loading: traitsLoading } = useTraits();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -16,7 +18,8 @@ export const CreateStory = () => {
     task: '',
     action: '',
     result: '',
-    categoryIds: [] as string[]
+    categoryIds: [] as string[],
+    traitIds: [] as string[]
   });
 
   const [createStory, { loading }] = useMutation(CREATE_STORY, {
@@ -35,7 +38,8 @@ export const CreateStory = () => {
         variables: {
           input: {
             ...formData,
-            categoryIds: formData.categoryIds.length > 0 ? formData.categoryIds : undefined
+            categoryIds: formData.categoryIds.length > 0 ? formData.categoryIds : undefined,
+            traitIds: formData.traitIds.length > 0 ? formData.traitIds : undefined
           }
         }
       });
@@ -49,6 +53,14 @@ export const CreateStory = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleCategoryChange = (categoryIds: string[]) => {
+    setFormData(prev => ({ ...prev, categoryIds }));
+  };
+
+  const handleTraitChange = (traitIds: string[]) => {
+    setFormData(prev => ({ ...prev, traitIds }));
   };
 
   const isFormValid = formData.title.trim() && formData.situation.trim() && 
@@ -103,7 +115,7 @@ export const CreateStory = () => {
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Title & Categories */}
+            {/* Left Column - Title, Categories, & Traits */}
             <div className="lg:col-span-1 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -129,14 +141,38 @@ export const CreateStory = () => {
                   </div>
                 ) : (
                   <MultiSelect
-                    categories={categories}
+                    items={categories}
                     selectedIds={formData.categoryIds}
-                    onChange={(categoryIds) => setFormData(prev => ({ ...prev, categoryIds }))}
+                    onChange={handleCategoryChange}
+                    type="category"
                     placeholder="Search and select categories..."
                   />
                 )}
                 <p className="text-xs text-gray-500 mt-2">
                   Choose categories that best describe what this story demonstrates
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Traits
+                  <span className="text-xs text-gray-500 font-normal ml-1">(optional)</span>
+                </label>
+                {traitsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <LoadingSpinner size="sm" text="Loading traits..." />
+                  </div>
+                ) : (
+                  <MultiSelect
+                    items={traits}
+                    selectedIds={formData.traitIds}
+                    onChange={handleTraitChange}
+                    type="trait"
+                    placeholder="Search and select traits..."
+                  />
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  Select the specific traits this story demonstrates
                 </p>
               </div>
             </div>

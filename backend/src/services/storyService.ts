@@ -212,6 +212,7 @@ export class StoryService {
     action: string;
     result: string;
     categoryIds?: string[];
+    traitIds?: string[];
   }): Promise<Story> {
     const session = await neo4jConnection.getSession();
     try {
@@ -229,24 +230,38 @@ export class StoryService {
           createdAt: $createdAt,
           updatedAt: $updatedAt
         })
+        
+        // Handle category relationships
         ${input.categoryIds && input.categoryIds.length > 0 ? `
         WITH s
         MATCH (c:Category)
         WHERE c.id IN $categoryIds
         MERGE (s)-[:BELONGS_TO]->(c)
+        ` : ''}
         
-        // Automatically create ANSWERS relationships with questions that share categories
+        // Handle trait relationships  
+        ${input.traitIds && input.traitIds.length > 0 ? `
         WITH s
-        MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q:Question)
-        MERGE (s)-[:ANSWERS]->(q)
+        MATCH (t:Trait)
+        WHERE t.id IN $traitIds
+        MERGE (s)-[:DEMONSTRATES]->(t)
+        ` : ''}
         
-        // Return story with its categories
+        // Automatically create ANSWERS relationships with questions that share categories OR traits
         WITH s
-        MATCH (s)-[:BELONGS_TO]->(c:Category)
-        RETURN s, collect(c) as categories
-        ` : `
-        RETURN s, [] as categories
-        `}
+        OPTIONAL MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q1:Question)
+        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(trait:Trait)<-[:TESTS_FOR]-(q2:Question)
+        WITH s, collect(DISTINCT q1) + collect(DISTINCT q2) as allQuestions
+        WITH s, [q IN allQuestions WHERE q IS NOT NULL] as matchingQuestions
+        FOREACH (q IN matchingQuestions | 
+          MERGE (s)-[:ANSWERS]->(q)
+        )
+        
+        // Return story with its relationships
+        WITH s
+        OPTIONAL MATCH (s)-[:BELONGS_TO]->(c:Category)
+        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(t:Trait)
+        RETURN s, collect(DISTINCT c) as categories, collect(DISTINCT t) as traits
       `, {
         id,
         title: input.title,
@@ -256,7 +271,8 @@ export class StoryService {
         result: input.result,
         createdAt: now,
         updatedAt: now,
-        categoryIds: input.categoryIds || []
+        categoryIds: input.categoryIds || [],
+        traitIds: input.traitIds || []
       });
       
       const storyRecord = result.records[0];
@@ -264,11 +280,14 @@ export class StoryService {
       const categories = storyRecord.get('categories')?.map((c: any) => 
         processRecordProperties(c.properties)
       ) || [];
+      const traits = storyRecord.get('traits')?.map((t: any) => 
+        processRecordProperties(t.properties)
+      ) || [];
       
       return {
         ...story,
         categories,
-        traits: [],
+        traits,
         recordings: []
       };
     } finally {

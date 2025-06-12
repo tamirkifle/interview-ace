@@ -1,62 +1,99 @@
+// frontend/src/components/ui/MultiSelect.tsx
+
 import { useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Tag, Folder } from 'lucide-react';
 import { Badge } from './Badge';
-import { Category } from '../../types';
 import { cn } from '../../utils/cn';
 
+interface BaseItem {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface CategoryItem extends BaseItem {
+  color: string;
+}
+
+interface TraitItem extends BaseItem {}
+
+type SelectableItem = CategoryItem | TraitItem;
+
 interface MultiSelectProps {
-  categories: Category[];
+  items: SelectableItem[];
   selectedIds: string[];
   onChange: (selectedIds: string[]) => void;
   placeholder?: string;
   className?: string;
+  type: 'category' | 'trait';
+  emptyMessage?: string;
+}
+
+function isCategory(item: SelectableItem): item is CategoryItem {
+  return 'color' in item;
 }
 
 export const MultiSelect = ({
-  categories,
+  items,
   selectedIds,
   onChange,
-  placeholder = "Search categories...",
-  className
+  placeholder = "Search...",
+  className,
+  type,
+  emptyMessage
 }: MultiSelectProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedCategories = categories.filter(cat => selectedIds.includes(cat.id));
+  const selectedItems = items.filter(item => selectedIds.includes(item.id));
 
-  const handleToggleCategory = (categoryId: string) => {
-    if (selectedIds.includes(categoryId)) {
-      onChange(selectedIds.filter(id => id !== categoryId));
+  const handleToggleItem = (itemId: string) => {
+    if (selectedIds.includes(itemId)) {
+      onChange(selectedIds.filter(id => id !== itemId));
     } else {
-      onChange([...selectedIds, categoryId]);
+      onChange([...selectedIds, itemId]);
     }
   };
 
-  const handleRemoveCategory = (categoryId: string) => {
-    onChange(selectedIds.filter(id => id !== categoryId));
+  const handleRemoveItem = (itemId: string) => {
+    onChange(selectedIds.filter(id => id !== itemId));
   };
+
+  const getIcon = () => {
+    return type === 'category' ? Folder : Tag;
+  };
+
+  const getEmptyMessage = () => {
+    if (emptyMessage) return emptyMessage;
+    const itemType = type === 'category' ? 'categories' : 'traits';
+    return searchTerm ? `No ${itemType} match your search` : `No ${itemType} available`;
+  };
+
+  const Icon = getIcon();
 
   return (
     <div className={cn("relative", className)}>
-      {/* Selected Categories Display */}
-      {selectedCategories.length > 0 && (
+      {/* Selected Items Display */}
+      {selectedItems.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
-          {selectedCategories.map((category) => (
+          {selectedItems.map((item) => (
             <Badge
-              key={category.id}
-              variant="colored"
-              color={category.color}
+              key={item.id}
+              variant={isCategory(item) ? "colored" : "outline"}
+              color={isCategory(item) ? item.color : undefined}
               size="sm"
               className="flex items-center gap-1"
             >
-              {category.name}
+              <Icon className="w-3 h-3" />
+              {item.name}
               <button
                 type="button"
-                onClick={() => handleRemoveCategory(category.id)}
+                onClick={() => handleRemoveItem(item.id)}
                 className="hover:bg-black/10 rounded-full p-0.5 transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -83,35 +120,39 @@ export const MultiSelect = ({
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {filteredCategories.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">
-              {searchTerm ? 'No categories match your search' : 'No categories available'}
+              {getEmptyMessage()}
             </div>
           ) : (
-            filteredCategories.map((category) => {
-              const isSelected = selectedIds.includes(category.id);
+            filteredItems.map((item) => {
+              const isSelected = selectedIds.includes(item.id);
               return (
                 <button
-                  key={category.id}
+                  key={item.id}
                   type="button"
-                  onClick={() => handleToggleCategory(category.id)}
+                  onClick={() => handleToggleItem(item.id)}
                   className={cn(
                     "w-full flex items-center px-3 py-2 text-left hover:bg-gray-50 transition-colors",
                     isSelected && "bg-primary-50"
                   )}
                 >
                   <div className="flex items-center flex-1">
-                    <div
-                      className="w-3 h-3 rounded-full mr-3 flex-shrink-0"
-                      style={{ backgroundColor: category.color }}
-                    />
+                    {isCategory(item) ? (
+                      <div
+                        className="w-3 h-3 rounded-full mr-3 flex-shrink-0"
+                        style={{ backgroundColor: item.color }}
+                      />
+                    ) : (
+                      <Icon className="w-3 h-3 mr-3 flex-shrink-0 text-gray-400" />
+                    )}
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900">
-                        {category.name}
+                        {item.name}
                       </div>
-                      {category.description && (
+                      {item.description && (
                         <div className="text-xs text-gray-500 mt-0.5">
-                          {category.description}
+                          {item.description}
                         </div>
                       )}
                     </div>
