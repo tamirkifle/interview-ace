@@ -28,7 +28,6 @@ export const Badge = ({
   color, 
   className 
 }: BadgeProps) => {
-console.log({className})
   const baseClasses = 'inline-flex items-center font-medium rounded-full transition-colors';
   
   // Handle colored variant with custom color
@@ -45,12 +44,7 @@ console.log({className})
 
   const customStyles = getCustomStyles();
   const isCustomColor = variant === 'colored' && color;
-  console.log({baseClasses}, {sc: sizeClasses[size]}, {vc: !isCustomColor && variantClasses[variant]}, {className}, {cn: cn(
-    baseClasses,
-    sizeClasses[size],
-    !isCustomColor && variantClasses[variant],
-    className
-  )})
+
   return (
     <span
       className={cn(
