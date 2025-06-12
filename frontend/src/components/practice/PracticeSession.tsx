@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, Folder } from 'lucide-react';
 import { Question } from '../../types';
 import { Badge } from '../ui';
+import { MatchingStories } from './MatchingStories';
 
 interface PracticeSessionProps {
   questions: Question[];
@@ -116,7 +117,12 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
             ))}
         </div>
         )}
-        
+
+        {/* Matching Stories */}
+        <div className="mb-6">
+        <MatchingStories questionId={currentQuestion.id} />
+        </div>
+
         {/* Action Buttons */}
         <div className="flex justify-center mt-8">
           <button

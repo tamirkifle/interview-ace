@@ -44,3 +44,15 @@ export interface Question {
   categories: Category[];
   traits: Trait[];
 } 
+
+export interface StoryMatch {
+  story: {
+    id: string;
+    title: string;
+    situation: string;
+    createdAt: string;
+  };
+  relevanceScore: number;
+  matchedCategories: Category[];
+  matchedTraits: Trait[];
+}

@@ -106,3 +106,29 @@ export const CREATE_STORY = gql`
     }
   }
 `;
+
+export const GET_MATCHING_STORIES = gql`
+  query GetMatchingStories($questionId: ID!, $limit: Int = 3) {
+    question(id: $questionId) {
+      id
+      matchingStories(limit: $limit) {
+        story {
+          id
+          title
+          situation
+          createdAt
+        }
+        relevanceScore
+        matchedCategories {
+          id
+          name
+          color
+        }
+        matchedTraits {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
