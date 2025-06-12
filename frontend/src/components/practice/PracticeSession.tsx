@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle, Folder } from 'lucide-react';
 import { Question } from '../../types';
 import { Badge } from '../ui';
 import { MatchingStories } from './MatchingStories';
+import { SelectedStoryDetails } from './SelectedStoryDetails';
 
 interface PracticeSessionProps {
   questions: Question[];
@@ -12,6 +13,8 @@ interface PracticeSessionProps {
 export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  const [selectedStories, setSelectedStories] = useState<Record<number, string | null>>({});
+
 
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -40,6 +43,13 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
       case 'hard': return '#DC2626';
       default: return '#6B7280';
     }
+  };
+
+  const handleStorySelect = (storyId: string | null) => {
+    setSelectedStories(prev => ({
+      ...prev,
+      [currentIndex]: storyId
+    }));
   };
 
   return (
@@ -120,8 +130,19 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
 
         {/* Matching Stories */}
         <div className="mb-6">
-        <MatchingStories questionId={currentQuestion.id} />
+        <MatchingStories 
+            questionId={currentQuestion.id} 
+            onStorySelect={handleStorySelect}
+            selectedStoryId={selectedStories[currentIndex]}
+        />
         </div>
+
+        {/* Selected Story Details */}
+        {selectedStories[currentIndex] && (
+        <div className="mb-6">
+            <SelectedStoryDetails storyId={selectedStories[currentIndex] as string} />
+        </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-center mt-8">

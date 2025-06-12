@@ -99,7 +99,8 @@ export const resolvers = {
       return questionService.getQuestionRecordings(parent.id);
     },
     matchingStories: async (parent: { id: string }, { limit }: { limit?: number }) => {
-      return storyService.findMatchingStories(parent.id, limit);
+      const intLimit = limit ? Math.floor(Number(limit)) : 3;
+      return storyService.findMatchingStories(parent.id, intLimit);
     }
   },
 

@@ -2,9 +2,8 @@ import { useQuery } from '@apollo/client';
 import { Plus } from 'lucide-react';
 import { GET_STORIES } from '../graphql/queries';
 import { Story } from '../types';
-import { LoadingSpinner, ErrorMessage, SkeletonLoader } from '../components/ui';
+import { ErrorMessage, SkeletonLoader } from '../components/ui';
 import { StoryCard } from '../components/story/StoryCard';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export const Stories = () => {

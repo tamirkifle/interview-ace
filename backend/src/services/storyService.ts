@@ -146,34 +146,55 @@ export class StoryService {
   async findMatchingStories(questionId: string, limit: number = 5): Promise<StoryMatch[]> {
     const session = await neo4jConnection.getSession();
     try {
+      const intLimit = Math.floor(Math.max(1, Number(limit)));
+      
       const result = await session.run(`
-        // Find stories that can answer this question based on shared categories and traits
-        MATCH (q:Question {id: $questionId})-[:TESTS_FOR]->(c:Category)
-        MATCH (s:Story)-[:BELONGS_TO]->(c)
-        WITH s, q, collect(DISTINCT c) as matchedCategories, count(DISTINCT c) as categoryMatches
+        // Get all stories and calculate their relevance to this question
+        MATCH (q:Question {id: $questionId})
+        MATCH (s:Story)
         
-        OPTIONAL MATCH (q)-[:TESTS_FOR]->(t:Trait)
-        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(t)
-        WITH s, q, matchedCategories, categoryMatches, 
-             collect(DISTINCT t) as matchedTraits, count(DISTINCT t) as traitMatches
+        // Get question's categories and traits
+        OPTIONAL MATCH (q)-[:TESTS_FOR]->(qc:Category)
+        OPTIONAL MATCH (q)-[:TESTS_FOR]->(qt:Trait)
+        WITH q, s, collect(DISTINCT qc) as questionCategories, collect(DISTINCT qt) as questionTraits
         
-        // Calculate relevance score (categories weighted higher than traits)
-        WITH s, q, matchedCategories, matchedTraits,
-             (categoryMatches * 2.0 + traitMatches * 1.0) as totalScore,
-             (categoryMatches + traitMatches) as totalMatches
+        // Get story's categories and traits  
+        OPTIONAL MATCH (s)-[:BELONGS_TO]->(sc:Category)
+        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(st:Trait)
+        WITH q, s, questionCategories, questionTraits,
+             collect(DISTINCT sc) as storyCategories, collect(DISTINCT st) as storyTraits
         
-        WHERE totalMatches > 0
-        WITH s, q, matchedCategories, matchedTraits,
-             (totalScore / 5.0) as relevanceScore
+        // Find intersections
+        WITH q, s, questionCategories, questionTraits, storyCategories, storyTraits,
+             [c IN storyCategories WHERE c IN questionCategories] as matchedCategories,
+             [t IN storyTraits WHERE t IN questionTraits] as matchedTraits
         
+        // Calculate scores
+        WITH s, matchedCategories, matchedTraits,
+             size(matchedCategories) as categoryMatches,
+             size(matchedTraits) as traitMatches,
+             size(questionCategories) as totalQuestionCategories,
+             size(questionTraits) as totalQuestionTraits
+        
+        // Calculate relevance score
+        WITH s, matchedCategories, matchedTraits, categoryMatches, traitMatches,
+             totalQuestionCategories, totalQuestionTraits,
+             CASE WHEN totalQuestionCategories > 0 
+                  THEN (categoryMatches * 1.0 / totalQuestionCategories) * 0.7 
+                  ELSE 0.0 END +
+             CASE WHEN totalQuestionTraits > 0 
+                  THEN (traitMatches * 1.0 / totalQuestionTraits) * 0.3 
+                  ELSE 0.0 END as relevanceScore
+        
+        // Return stories sorted by relevance
         RETURN s, relevanceScore, matchedCategories, matchedTraits
-        ORDER BY relevanceScore DESC
-        LIMIT $limit
-      `, { questionId, limit });
+        ORDER BY relevanceScore DESC, categoryMatches DESC, traitMatches DESC
+        LIMIT toInteger($limit)
+      `, { questionId, limit: intLimit });
       
       return result.records.map((record: Record) => ({
         story: record.get('s').properties,
-        relevanceScore: Math.min(record.get('relevanceScore'), 1.0), // Cap at 100%
+        relevanceScore: record.get('relevanceScore'),
         matchedCategories: record.get('matchedCategories').map((c: any) => c.properties),
         matchedTraits: record.get('matchedTraits').map((t: any) => t.properties)
       }));

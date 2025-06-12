@@ -117,6 +117,17 @@ export const GET_MATCHING_STORIES = gql`
           title
           situation
           createdAt
+          categories {
+            id
+            name
+            color
+            description
+          }
+           traits {
+           id
+           name
+           description
+          }
         }
         relevanceScore
         matchedCategories {
