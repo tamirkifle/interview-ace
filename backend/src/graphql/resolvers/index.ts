@@ -112,4 +112,4 @@ export const resolvers = {
       return recordingService.getRecordingQuestion(parent.id);
     }
   }
-}; 
+};

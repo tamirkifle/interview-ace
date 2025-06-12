@@ -147,36 +147,49 @@ export class StoryService {
       const intLimit = Math.floor(Math.max(1, Number(limit)));
       
       const result = await session.run(`
-        // Get all stories and calculate their relevance to this question
+        // Get the question with explicit index hint
         MATCH (q:Question {id: $questionId})
-        MATCH (s:Story)
+        USING INDEX q:Question(id)
         
-        // Get question's categories and traits
+        // Get question's categories and traits in parallel
         OPTIONAL MATCH (q)-[:TESTS_FOR]->(qc:Category)
         OPTIONAL MATCH (q)-[:TESTS_FOR]->(qt:Trait)
-        WITH q, s, collect(DISTINCT qc) as questionCategories, collect(DISTINCT qt) as questionTraits
+        WITH q, collect(DISTINCT qc) as questionCategories, collect(DISTINCT qt) as questionTraits
         
-        // Get story's categories and traits  
+        // Early filter: Only get stories that share at least one category OR trait
+        OPTIONAL MATCH (q)-[:TESTS_FOR]->(sharedCat:Category)<-[:BELONGS_TO]-(categoryStories:Story)
+        OPTIONAL MATCH (q)-[:TESTS_FOR]->(sharedTrait:Trait)<-[:DEMONSTRATES]-(traitStories:Story)
+        
+        // Combine and deduplicate relevant stories
+        WITH q, questionCategories, questionTraits,
+             collect(DISTINCT categoryStories) + collect(DISTINCT traitStories) as candidateStories
+        
+        // Filter out nulls and process each candidate story
+        UNWIND [s IN candidateStories WHERE s IS NOT NULL] as s
+        
+        // Get story's categories and traits (only for relevant stories)
         OPTIONAL MATCH (s)-[:BELONGS_TO]->(sc:Category)
         OPTIONAL MATCH (s)-[:DEMONSTRATES]->(st:Trait)
         WITH q, s, questionCategories, questionTraits,
              collect(DISTINCT sc) as storyCategories, collect(DISTINCT st) as storyTraits
         
-        // Find intersections
+        // Calculate intersections
         WITH q, s, questionCategories, questionTraits, storyCategories, storyTraits,
              [c IN storyCategories WHERE c IN questionCategories] as matchedCategories,
              [t IN storyTraits WHERE t IN questionTraits] as matchedTraits
         
-        // Calculate scores
+        // Calculate scores (only for stories that have matches)
         WITH s, matchedCategories, matchedTraits,
              size(matchedCategories) as categoryMatches,
              size(matchedTraits) as traitMatches,
              size(questionCategories) as totalQuestionCategories,
              size(questionTraits) as totalQuestionTraits
         
+        // Only include stories that have at least one match
+        WHERE categoryMatches > 0 OR traitMatches > 0
+        
         // Calculate relevance score
         WITH s, matchedCategories, matchedTraits, categoryMatches, traitMatches,
-             totalQuestionCategories, totalQuestionTraits,
              CASE WHEN totalQuestionCategories > 0 
                   THEN (categoryMatches * 1.0 / totalQuestionCategories) * 0.7 
                   ELSE 0.0 END +
@@ -184,7 +197,7 @@ export class StoryService {
                   THEN (traitMatches * 1.0 / totalQuestionTraits) * 0.3 
                   ELSE 0.0 END as relevanceScore
         
-        // Return stories sorted by relevance
+        // Return sorted results
         RETURN s, relevanceScore, matchedCategories, matchedTraits
         ORDER BY relevanceScore DESC, categoryMatches DESC, traitMatches DESC
         LIMIT toInteger($limit)
@@ -212,7 +225,6 @@ export class StoryService {
     action: string;
     result: string;
     categoryIds?: string[];
-    traitIds?: string[];
   }): Promise<Story> {
     const session = await neo4jConnection.getSession();
     try {
@@ -230,38 +242,24 @@ export class StoryService {
           createdAt: $createdAt,
           updatedAt: $updatedAt
         })
-        
-        // Handle category relationships
         ${input.categoryIds && input.categoryIds.length > 0 ? `
         WITH s
         MATCH (c:Category)
         WHERE c.id IN $categoryIds
         MERGE (s)-[:BELONGS_TO]->(c)
-        ` : ''}
         
-        // Handle trait relationships  
-        ${input.traitIds && input.traitIds.length > 0 ? `
+        // Automatically create ANSWERS relationships with questions that share categories
         WITH s
-        MATCH (t:Trait)
-        WHERE t.id IN $traitIds
-        MERGE (s)-[:DEMONSTRATES]->(t)
-        ` : ''}
+        MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q:Question)
+        MERGE (s)-[:ANSWERS]->(q)
         
-        // Automatically create ANSWERS relationships with questions that share categories OR traits
+        // Return story with its categories
         WITH s
-        OPTIONAL MATCH (s)-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q1:Question)
-        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(trait:Trait)<-[:TESTS_FOR]-(q2:Question)
-        WITH s, collect(DISTINCT q1) + collect(DISTINCT q2) as allQuestions
-        WITH s, [q IN allQuestions WHERE q IS NOT NULL] as matchingQuestions
-        FOREACH (q IN matchingQuestions | 
-          MERGE (s)-[:ANSWERS]->(q)
-        )
-        
-        // Return story with its relationships
-        WITH s
-        OPTIONAL MATCH (s)-[:BELONGS_TO]->(c:Category)
-        OPTIONAL MATCH (s)-[:DEMONSTRATES]->(t:Trait)
-        RETURN s, collect(DISTINCT c) as categories, collect(DISTINCT t) as traits
+        MATCH (s)-[:BELONGS_TO]->(c:Category)
+        RETURN s, collect(c) as categories
+        ` : `
+        RETURN s, [] as categories
+        `}
       `, {
         id,
         title: input.title,
@@ -271,8 +269,7 @@ export class StoryService {
         result: input.result,
         createdAt: now,
         updatedAt: now,
-        categoryIds: input.categoryIds || [],
-        traitIds: input.traitIds || []
+        categoryIds: input.categoryIds || []
       });
       
       const storyRecord = result.records[0];
@@ -280,14 +277,11 @@ export class StoryService {
       const categories = storyRecord.get('categories')?.map((c: any) => 
         processRecordProperties(c.properties)
       ) || [];
-      const traits = storyRecord.get('traits')?.map((t: any) => 
-        processRecordProperties(t.properties)
-      ) || [];
       
       return {
         ...story,
         categories,
-        traits,
+        traits: [],
         recordings: []
       };
     } finally {
