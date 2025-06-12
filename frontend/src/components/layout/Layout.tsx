@@ -1,3 +1,5 @@
+// frontend/src/components/layout/Layout.tsx
+
 import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { Header } from './Header';
@@ -21,4 +23,4 @@ export const Layout = () => {
       </div>
     </div>
   );
-}; 
+};
