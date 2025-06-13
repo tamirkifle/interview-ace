@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ApolloServer } from '@apollo/server';
@@ -8,79 +8,69 @@ import { neo4jConnection } from './db/neo4j';
 import { initializeDatabase } from './db/initialize';
 import { typeDefs } from './graphql/schema';
 import { resolvers } from './graphql/resolvers';
+import { minioService } from './services/minioService';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 4000;
-const isDevelopment = process.env.NODE_ENV === 'development';
+const PORT = process.env.PORT || 4000;
 
-// Middleware
 app.use(cors());
-app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
-// Initialize Neo4j connection and database
-async function initializeDatabaseConnection() {
+async function startServer() {
   try {
-    const isConnected = await neo4jConnection.verifyConnectivity();
-    if (isConnected) {
-      console.log('Connected to Neo4j');
-      // Initialize database constraints and indexes
-      await initializeDatabase();
+    // Test Neo4j connection
+    await neo4jConnection.verifyConnectivity();
+    console.log('Connected to Neo4j');
+
+    // Initialize database constraints and indexes
+    await initializeDatabase();
+    console.log('Database initialized');
+
+    // Test MinIO connection
+    const minioConnected = await minioService.testConnection();
+    if (!minioConnected) {
+      console.warn('WARNING: MinIO connection failed. Video uploads will not work.');
     } else {
-      console.error('Failed to connect to Neo4j');
-      process.exit(1);
+      // Ensure recordings bucket exists
+      await minioService.ensureBucketExists();
+      console.log('MinIO connected and bucket ready');
     }
+
+    // Create Apollo Server
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+    });
+
+    await server.start();
+
+    app.use(
+      '/graphql',
+      json(),
+      expressMiddleware(server)
+    );
+
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}`);
+      console.log(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
+    });
   } catch (error) {
-    console.error('Error connecting to Neo4j:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
-// Initialize Apollo Server
-async function startApolloServer() {
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    // Enable playground in development
-    introspection: isDevelopment,
-  });
-
-  await server.start();
-
-  // Apply Apollo middleware
-  app.use(
-    '/graphql',
-    json(),
-    expressMiddleware(server, {
-      context: async () => ({
-        // Add any context properties here
-      }),
-    })
-  );
-
-  console.log(`Apollo Server started at /graphql${isDevelopment ? ' (Playground enabled)' : ''}`);
-}
-
-// Start server
-const httpServer = app.listen(port, async () => {
-  console.log(`Server is running on http://localhost:${port}`);
-  await initializeDatabaseConnection();
-  await startApolloServer();
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nShutting down gracefully...');
+  await neo4jConnection.close();
+  process.exit(0);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received. Closing server and Neo4j connection...');
-  await neo4jConnection.close();
-  httpServer.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-}); 
+startServer();
