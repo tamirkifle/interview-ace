@@ -9,6 +9,7 @@ import { initializeDatabase } from './db/initialize';
 import { typeDefs } from './graphql/schema';
 import { resolvers } from './graphql/resolvers';
 import { minioService } from './services/minioService';
+import { upload } from './middleware/upload';
 
 dotenv.config();
 
@@ -20,6 +21,50 @@ app.use(cors());
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Video upload endpoint
+app.post('/api/upload-video', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        error: 'No video file provided' 
+      });
+    }
+
+    console.log('Received video upload:', {
+      originalName: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
+
+    // Upload to MinIO
+    const minioKey = await minioService.uploadVideo(
+      req.file.buffer,
+      req.file.originalname
+    );
+
+    res.json({
+      success: true,
+      minioKey,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    
+    if (error.message.includes('File size exceeds')) {
+      return res.status(413).json({ 
+        error: 'File too large. Maximum size is 100MB.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to upload video',
+      message: error.message 
+    });
+  }
 });
 
 async function startServer() {
@@ -59,6 +104,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
       console.log(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
+      console.log(`Video upload endpoint: http://localhost:${PORT}/api/upload-video`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -1,4 +1,6 @@
 import * as Minio from 'minio';
+import { v4 as uuidv4 } from 'uuid';
+import { neo4jConnection } from '../db/neo4j';
 
 class MinioService {
   private client: Minio.Client;
@@ -54,6 +56,69 @@ class MinioService {
     } catch (error) {
       console.error('Error ensuring bucket exists:', error);
       throw error;
+    }
+  }
+
+  generateUniqueFilename(originalName: string): string {
+    const extension = originalName.split('.').pop() || 'webm';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const uniqueId = uuidv4().substring(0, 8);
+    return `recording_${timestamp}_${uniqueId}.${extension}`;
+  }
+
+  async uploadVideo(buffer: Buffer, filename: string): Promise<string> {
+    try {
+      // Validate file size (max 100MB)
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      if (buffer.length > maxSize) {
+        throw new Error('File size exceeds 100MB limit');
+      }
+
+      const uniqueFilename = this.generateUniqueFilename(filename);
+      
+      // Upload to MinIO
+      await this.client.putObject(
+        this.bucketName,
+        uniqueFilename,
+        buffer,
+        buffer.length,
+        {
+          'Content-Type': 'video/webm',
+          'X-Original-Filename': filename
+        }
+      );
+
+      console.log(`Video uploaded successfully: ${uniqueFilename}`);
+      return uniqueFilename;
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      throw error;
+    }
+  }
+
+  async getVideoUrl(key: string): Promise<string> {
+    try {
+      // Generate a presigned URL valid for 7 days
+      const url = await this.client.presignedGetObject(
+        this.bucketName,
+        key,
+        7 * 24 * 60 * 60 // 7 days in seconds
+      );
+      return url;
+    } catch (error) {
+      console.error('Error generating video URL:', error);
+      throw error;
+    }
+  }
+
+  async deleteVideo(key: string): Promise<boolean> {
+    try {
+      await this.client.removeObject(this.bucketName, key);
+      console.log(`Video deleted: ${key}`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      return false;
     }
   }
 
