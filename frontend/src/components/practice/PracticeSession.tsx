@@ -4,6 +4,7 @@ import { Question } from '../../types';
 import { Badge } from '../ui';
 import { MatchingStories } from './MatchingStories';
 import { SelectedStoryDetails } from './SelectedStoryDetails';
+import { VideoRecorder } from '../recording';
 
 interface PracticeSessionProps {
   questions: Question[];
@@ -14,7 +15,7 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [selectedStories, setSelectedStories] = useState<Record<number, string | null>>({});
-
+  const [recordings, setRecordings] = useState<Record<number, { blob: Blob; duration: number } | null>>({});
 
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -51,6 +52,20 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
       [currentIndex]: storyId
     }));
   };
+
+  const handleRecordingComplete = (blob: Blob, duration: number) => {
+    setRecordings(prev => ({
+      ...prev,
+      [currentIndex]: { blob, duration }
+    }));
+    console.log('Recording completed:', { duration, size: blob.size });
+  };
+
+  // Get selected story details for context
+  const selectedStoryId = selectedStories[currentIndex];
+  const selectedStoryTitle = selectedStoryId ? 
+    // This would need to be fetched from your story data
+    `Story ${selectedStoryId}` : undefined;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -112,37 +127,46 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
 
         {/* Categories */}
         {currentQuestion.categories && currentQuestion.categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-auto mb-3">
+          <div className="flex flex-wrap gap-2 mt-auto mb-6">
             {currentQuestion.categories.map((category) => (
-            <Badge
+              <Badge
                 key={category.id}
                 variant="colored"
                 color={category.color}
                 size="sm"
                 className="flex items-center gap-1"
-            >
+              >
                 <Folder className="w-3 h-3" />
                 {category.name}
-            </Badge>
+              </Badge>
             ))}
-        </div>
+          </div>
         )}
 
         {/* Matching Stories */}
         <div className="mb-6">
-        <MatchingStories 
+          <MatchingStories 
             questionId={currentQuestion.id} 
             onStorySelect={handleStorySelect}
             selectedStoryId={selectedStories[currentIndex]}
-        />
+          />
         </div>
 
         {/* Selected Story Details */}
         {selectedStories[currentIndex] && (
-        <div className="mb-6">
+          <div className="mb-6">
             <SelectedStoryDetails storyId={selectedStories[currentIndex] as string} />
-        </div>
+          </div>
         )}
+
+        {/* Video Recording Section */}
+        <div className="mb-6">
+          <VideoRecorder 
+            onRecordingComplete={handleRecordingComplete}
+            questionText={currentQuestion.text}
+            storyTitle={selectedStoryTitle}
+          />
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-center mt-8">
@@ -171,11 +195,13 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
         <div className="flex space-x-2">
           {questions.slice(Math.max(0, currentIndex - 2), currentIndex + 3).map((_, idx) => {
             const actualIndex = Math.max(0, currentIndex - 2) + idx;
+            const hasRecording = recordings[actualIndex];
+            
             return (
               <button
                 key={actualIndex}
                 onClick={() => setCurrentIndex(actualIndex)}
-                className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                className={`w-8 h-8 rounded-full text-sm font-medium transition-colors relative ${
                   actualIndex === currentIndex
                     ? 'bg-primary-600 text-white'
                     : answeredQuestions.has(actualIndex)
@@ -184,6 +210,9 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
                 }`}
               >
                 {actualIndex + 1}
+                {hasRecording && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white" />
+                )}
               </button>
             );
           })}
