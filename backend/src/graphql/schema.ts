@@ -85,6 +85,7 @@ export const typeDefs = gql`
     questions: [Question!]!
     question(id: ID!): Question
     recording(id: ID!): Recording
+    recordingsByQuestion(questionId: ID!): [Recording!]!  # Add this line
   }
 
   input CreateStoryInput {
@@ -97,7 +98,17 @@ export const typeDefs = gql`
     traitIds: [ID!]
   }
 
+  input CreateRecordingInput {  # Add this input type
+    questionId: ID!
+    storyId: ID
+    duration: Int!
+    filename: String!
+    minioKey: String!
+  }
+
   type Mutation {
     createStory(input: CreateStoryInput!): Story!
+    createRecording(input: CreateRecordingInput!): Recording!  # Add this mutation
+    deleteRecording(id: ID!): Boolean!  # Add this mutation
   }
 `;

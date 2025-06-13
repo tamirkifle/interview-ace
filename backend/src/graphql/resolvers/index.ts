@@ -46,12 +46,21 @@ export const resolvers = {
     },
     recording: async (_: any, { id }: { id: string }) => {
       return recordingService.getRecordingById(id);
+    },
+    recordingsByQuestion: async (_: any, { questionId }: { questionId: string }) => {  // Add this
+      return recordingService.getRecordingsByQuestion(questionId);
     }
   },
 
   Mutation: {
     createStory: async (_: any, { input }: { input: any }) => {
       return storyService.createStory(input);
+    },
+    createRecording: async (_: any, { input }: { input: any }) => {  // Add this
+      return recordingService.createRecording(input);
+    },
+    deleteRecording: async (_: any, { id }: { id: string }) => {  // Add this
+      return recordingService.deleteRecording(id);
     }
   },
 
