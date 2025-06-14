@@ -161,11 +161,17 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
 
         {/* Video Recording Section */}
         <div className="mb-6">
-          <VideoRecorder 
+        <VideoRecorder 
             onRecordingComplete={handleRecordingComplete}
             questionText={currentQuestion.text}
             storyTitle={selectedStoryTitle}
-          />
+            questionId={currentQuestion.id}
+            storyId={selectedStories[currentIndex]}
+            onRecordingSaved={(recordingId) => {
+            console.log('Recording saved with ID:', recordingId);
+            // You could update UI to show saved status
+            }}
+        />
         </div>
 
         {/* Action Buttons */}

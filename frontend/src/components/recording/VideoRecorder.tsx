@@ -1,17 +1,27 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Square, Play, AlertCircle, Clock, Video, RotateCcw } from 'lucide-react';
+import { Camera, Square, Play, AlertCircle, Clock, Video, RotateCcw, Upload, CheckCircle2 } from 'lucide-react';
+import { useMutation } from '@apollo/client';
+import { CREATE_RECORDING } from '../../graphql/mutations';
+import { uploadService } from '../../services/uploadService';
+
 
 interface VideoRecorderProps {
-  onRecordingComplete?: (blob: Blob, duration: number) => void;
-  questionText?: string;
-  storyTitle?: string;
-}
+    onRecordingComplete?: (blob: Blob, duration: number) => void;
+    onRecordingSaved?: (recordingId: string) => void;
+    questionText?: string;
+    storyTitle?: string;
+    questionId: string;
+    storyId?: string | null;
+  }
 
-export const VideoRecorder = ({ 
-  onRecordingComplete, 
-  questionText, 
-  storyTitle 
-}: VideoRecorderProps) => {
+  export const VideoRecorder = ({ 
+    onRecordingComplete, 
+    onRecordingSaved,
+    questionText, 
+    storyTitle,
+    questionId,
+    storyId
+  }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -20,6 +30,11 @@ export const VideoRecorder = ({
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [savedRecordingId, setSavedRecordingId] = useState<string | null>(null);
+  const [createRecording] = useMutation(CREATE_RECORDING);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const playbackRef = useRef<HTMLVideoElement>(null);
@@ -146,6 +161,55 @@ export const VideoRecorder = ({
     }
   };
 
+  const saveRecording = async () => {
+    if (!recordedBlob || !questionId) return;
+  
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadProgress(0);
+  
+    try {
+      // Generate filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `practice_${timestamp}.webm`;
+  
+      // Upload to MinIO
+      const uploadResult = await uploadService.uploadRecording(
+        recordedBlob,
+        filename,
+        (progress) => setUploadProgress(progress.percentage)
+      );
+  
+      if (!uploadResult.success) {
+        throw new Error('Upload failed');
+      }
+  
+      // Create recording in database
+      const { data } = await createRecording({
+        variables: {
+          input: {
+            questionId,
+            storyId: storyId || null,
+            duration,
+            filename: uploadResult.originalName,
+            minioKey: uploadResult.minioKey
+          }
+        }
+      });
+  
+      setSavedRecordingId(data.createRecording.id);
+      onRecordingSaved?.(data.createRecording.id);
+  
+      // Clear recording after successful save (optional)
+      // reset();
+    } catch (error: any) {
+      console.error('Failed to save recording:', error);
+      setUploadError(error.message || 'Failed to save recording');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Reset everything
   const reset = () => {
     setIsPreviewMode(false);
@@ -156,6 +220,9 @@ export const VideoRecorder = ({
     }
     setDuration(0);
     setError(null);
+    setSavedRecordingId(null);
+    setUploadError(null);
+    setUploadProgress(0);
     
     // Restart camera if we had permission
     if (hasPermission) {
@@ -258,8 +325,8 @@ useEffect(() => {
     );
   }
 
-  // Show recorded video playback
-  if (isPreviewMode && recordedUrl) {
+// Show recorded video playback
+if (isPreviewMode && recordedUrl) {
     return (
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -287,10 +354,46 @@ useEffect(() => {
             preload="metadata"
           />
         </div>
+  
+        {/* Upload Progress */}
+        {isUploading && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">Uploading...</span>
+              <span className="text-sm font-medium">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+  
+        {/* Upload Error */}
+        {uploadError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center text-red-700">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              <span className="text-sm">{uploadError}</span>
+            </div>
+          </div>
+        )}
+  
+        {/* Save Success */}
+        {savedRecordingId && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center text-green-700">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <span className="text-sm">Recording saved successfully!</span>
+            </div>
+          </div>
+        )}
         
         <div className="text-center">
           <p className="text-sm text-gray-600 mb-3">
-            Review your recording above. You can record again if needed.
+            Review your recording above. You can save it or record again.
           </p>
           
           <div className="flex justify-center space-x-3">
@@ -301,6 +404,17 @@ useEffect(() => {
               <RotateCcw className="w-4 h-4 mr-2" />
               Record Again
             </button>
+            
+            {!savedRecordingId && (
+              <button
+                onClick={saveRecording}
+                disabled={isUploading}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploading ? 'Saving...' : 'Save Recording'}
+              </button>
+            )}
           </div>
         </div>
       </div>
