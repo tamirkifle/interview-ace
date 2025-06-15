@@ -61,6 +61,17 @@ export const typeDefs = gql`
     createdAt: DateTime!
     story: Story
     question: Question!
+    transcript: String
+    transcriptStatus: TranscriptionStatus
+    transcriptedAt: DateTime
+  }
+
+  enum TranscriptionStatus {
+    NONE
+    PENDING
+    PROCESSING
+    COMPLETED
+    FAILED
   }
 
   type StoryMatch {
