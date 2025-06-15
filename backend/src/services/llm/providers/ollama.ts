@@ -22,33 +22,25 @@ export class OllamaProvider extends BaseLLMProvider {
     this.validateRequest(request);
 
     try {
-      const categories = request.categoryIds || [];
-      const traits = request.traitIds || [];
+      const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const response = await axios.post<OllamaGenerateResponse>(
         `${this.baseUrl}/api/generate`, 
         {
           model: 'llama2',
-          prompt: `${this.buildSystemPrompt()}\n\n${this.buildUserPrompt(request, categories, traits)}`,
+          prompt: `${systemPrompt}\n\n${userPrompt}`,
           stream: false,
           format: 'json'
         }
       );
 
       const content = response.data.response;
-      const parsed = JSON.parse(content);
       
-      const questions = Array.isArray(parsed) ? parsed : parsed.questions || [];
-      
-      return questions.map((q: any) => ({
-        text: q.text || q.question,
-        suggestedCategories: q.categories || q.suggestedCategories || [],
-        suggestedTraits: q.traits || q.suggestedTraits || [],
-        difficulty: q.difficulty || 'medium',
-        reasoning: q.reasoning
-      }));
+      return this.parseQuestionResponse(content);
 
     } catch (error: any) {
+      if (error instanceof LLMError) throw error;
+      
       if (error.code === 'ECONNREFUSED') {
         throw new LLMError('Cannot connect to Ollama. Is it running?', 'PROVIDER_ERROR', 'ollama');
       }

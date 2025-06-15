@@ -35,6 +35,24 @@ export class TraitService {
     }
   }
 
+  async getTraitsByIds(ids: string[]): Promise<Trait[]> {
+    if (!ids || ids.length === 0) return [];
+    
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (t:Trait)
+        WHERE t.id IN $ids
+        RETURN t
+        ORDER BY t.name
+      `, { ids });
+      
+      return result.records.map((record: Record) => record.get('t').properties);
+    } finally {
+      await session.close();
+    }
+  }
+
   async getTraitStories(traitId: string): Promise<any[]> {
     const session = await neo4jConnection.getSession();
     try {

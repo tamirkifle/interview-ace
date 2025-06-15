@@ -35,6 +35,24 @@ export class CategoryService {
     }
   }
 
+  async getCategoriesByIds(ids: string[]): Promise<Category[]> {
+    if (!ids || ids.length === 0) return [];
+    
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (c:Category)
+        WHERE c.id IN $ids
+        RETURN c
+        ORDER BY c.name
+      `, { ids });
+      
+      return result.records.map((record: Record) => record.get('c').properties);
+    } finally {
+      await session.close();
+    }
+  }
+
   async getCategoryStories(categoryId: string): Promise<any[]> {
     const session = await neo4jConnection.getSession();
     try {

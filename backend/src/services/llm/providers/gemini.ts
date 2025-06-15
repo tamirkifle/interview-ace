@@ -15,33 +15,19 @@ export class GeminiProvider extends BaseLLMProvider {
 
     try {
       const model = this.client.getGenerativeModel({ model: 'gemini-pro' });
-      
-      const categories = request.categoryIds || [];
-      const traits = request.traitIds || [];
+      const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
-      const prompt = `${this.buildSystemPrompt()}\n\n${this.buildUserPrompt(request, categories, traits)}`;
+      const prompt = `${systemPrompt}\n\n${userPrompt}`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const content = response.text();
 
-      // Extract JSON from the response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new LLMError('Invalid response format from Gemini', 'PROVIDER_ERROR', 'gemini');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      return parsed.map((q: any) => ({
-        text: q.text || q.question,
-        suggestedCategories: q.categories || q.suggestedCategories || [],
-        suggestedTraits: q.traits || q.suggestedTraits || [],
-        difficulty: q.difficulty || 'medium',
-        reasoning: q.reasoning
-      }));
+      return this.parseQuestionResponse(content);
 
     } catch (error: any) {
+      if (error instanceof LLMError) throw error;
+      
       if (error.message?.includes('API_KEY_INVALID')) {
         throw new LLMError('Invalid Gemini API key', 'INVALID_API_KEY', 'gemini');
       }

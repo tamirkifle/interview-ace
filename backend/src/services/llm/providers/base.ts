@@ -1,8 +1,12 @@
 import { LLMProvider, GenerateQuestionsRequest, GeneratedQuestion, LLMError } from '../types';
+import { QuestionGeneratorPrompts } from '../prompts/questionGenerator';
+import { JobDescriptionAnalyzer } from '../prompts/jobDescriptionAnalyzer';
 
 export abstract class BaseLLMProvider implements LLMProvider {
   protected apiKey: string;
   protected providerName: string;
+  protected promptGenerator: QuestionGeneratorPrompts;
+  protected jobAnalyzer: JobDescriptionAnalyzer;
 
   constructor(apiKey: string, providerName: string) {
     if (!apiKey) {
@@ -10,6 +14,8 @@ export abstract class BaseLLMProvider implements LLMProvider {
     }
     this.apiKey = apiKey;
     this.providerName = providerName;
+    this.promptGenerator = new QuestionGeneratorPrompts();
+    this.jobAnalyzer = new JobDescriptionAnalyzer();
   }
 
   abstract generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]>;
@@ -39,46 +45,58 @@ export abstract class BaseLLMProvider implements LLMProvider {
     }
   }
 
-  protected buildSystemPrompt(): string {
-    return `You are an expert behavioral interview coach helping candidates prepare for interviews. 
-Your task is to generate behavioral interview questions that follow the STAR method (Situation, Task, Action, Result).
+  protected async buildPrompts(request: GenerateQuestionsRequest): Promise<{
+    systemPrompt: string;
+    userPrompt: string;
+  }> {
+    const categories = await this.promptGenerator.getCategories(request.categoryIds || []);
+    const traits = await this.promptGenerator.getTraits(request.traitIds || []);
 
-Guidelines:
-- Questions should be open-ended and begin with phrases like "Tell me about a time when...", "Describe a situation where...", "Give me an example of..."
-- Focus on past experiences, not hypothetical situations
-- Questions should probe for specific competencies and behaviors
-- Vary the difficulty appropriately
-- Each question should be clear and concise`;
+    let systemPrompt = this.promptGenerator.buildSystemPrompt();
+    let userPrompt: string;
+
+    if (request.jobDescription && !request.categoryIds?.length) {
+      // Pure job description based generation
+      const analysis = this.jobAnalyzer.analyzeJobDescription(request.jobDescription);
+      userPrompt = this.jobAnalyzer.buildContextualPrompt(analysis, request.jobDescription);
+    } else {
+      // Category/trait based or mixed generation
+      userPrompt = await this.promptGenerator.buildUserPrompt(
+        request,
+        categories,
+        traits
+      );
+    }
+
+    return { systemPrompt, userPrompt };
   }
 
-  protected buildUserPrompt(request: GenerateQuestionsRequest, categories: string[], traits: string[]): string {
-    let prompt = `Generate ${request.count || 5} behavioral interview questions`;
+  protected parseQuestionResponse(responseText: string): GeneratedQuestion[] {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/) || responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
 
-    if (request.difficulty) {
-      prompt += ` at ${request.difficulty} difficulty level`;
+      const parsed = JSON.parse(jsonMatch[0]);
+      const questions = Array.isArray(parsed) ? parsed : [parsed];
+
+      return questions.map((q: any) => ({
+        text: q.text || q.question || '',
+        suggestedCategories: Array.isArray(q.suggestedCategories) ? q.suggestedCategories : 
+                           Array.isArray(q.categories) ? q.categories : [],
+        suggestedTraits: Array.isArray(q.suggestedTraits) ? q.suggestedTraits : 
+                        Array.isArray(q.traits) ? q.traits : [],
+        difficulty: (q.difficulty || 'medium').toLowerCase() as 'easy' | 'medium' | 'hard',
+        reasoning: q.reasoning || ''
+      })).filter((q: GeneratedQuestion) => q.text); // Filter out any empty questions
+    } catch (error) {
+      throw new LLMError(
+        'Failed to parse question response',
+        'PROVIDER_ERROR',
+        this.providerName
+      );
     }
-
-    if (categories.length > 0) {
-      prompt += `\n\nFocus on these categories: ${categories.join(', ')}`;
-    }
-
-    if (traits.length > 0) {
-      prompt += `\n\nAssess these traits: ${traits.join(', ')}`;
-    }
-
-    if (request.jobDescription) {
-      prompt += `\n\nJob Description:\n${request.jobDescription}`;
-    }
-
-    prompt += `\n\nFor each question, provide:
-1. The question text
-2. Which categories it relates to (from the list provided)
-3. Which traits it assesses (from the list provided)
-4. Difficulty level (easy, medium, or hard)
-5. Brief reasoning for why this is a good question
-
-Return the response as a JSON array.`;
-
-    return prompt;
   }
 }

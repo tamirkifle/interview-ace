@@ -14,15 +14,13 @@ export class OpenAIProvider extends BaseLLMProvider {
     this.validateRequest(request);
 
     try {
-      // TODO: Fetch actual categories and traits from database
-      const categories = request.categoryIds || [];
-      const traits = request.traitIds || [];
+      const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const completion = await this.client.chat.completions.create({
         model: 'gpt-4-turbo-preview',
         messages: [
-          { role: 'system', content: this.buildSystemPrompt() },
-          { role: 'user', content: this.buildUserPrompt(request, categories, traits) }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
         max_tokens: 2000,
@@ -34,18 +32,11 @@ export class OpenAIProvider extends BaseLLMProvider {
         throw new LLMError('No response from OpenAI', 'PROVIDER_ERROR', 'openai');
       }
 
-      const parsed = JSON.parse(content);
-      const questions = Array.isArray(parsed) ? parsed : parsed.questions || [];
-
-      return questions.map((q: any) => ({
-        text: q.text || q.question,
-        suggestedCategories: q.categories || q.suggestedCategories || [],
-        suggestedTraits: q.traits || q.suggestedTraits || [],
-        difficulty: q.difficulty || 'medium',
-        reasoning: q.reasoning
-      }));
+      return this.parseQuestionResponse(content);
 
     } catch (error: any) {
+      if (error instanceof LLMError) throw error;
+      
       if (error.status === 401) {
         throw new LLMError('Invalid OpenAI API key', 'INVALID_API_KEY', 'openai');
       }

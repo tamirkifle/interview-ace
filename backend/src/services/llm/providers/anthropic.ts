@@ -14,39 +14,26 @@ export class AnthropicProvider extends BaseLLMProvider {
     this.validateRequest(request);
 
     try {
-      const categories = request.categoryIds || [];
-      const traits = request.traitIds || [];
+      const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const message = await this.client.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 2000,
         temperature: 0.7,
-        system: this.buildSystemPrompt(),
+        system: systemPrompt,
         messages: [{
           role: 'user',
-          content: this.buildUserPrompt(request, categories, traits) + '\n\nPlease format your response as valid JSON.'
+          content: userPrompt + '\n\nPlease format your response as valid JSON.'
         }]
       });
 
       const content = message.content[0].type === 'text' ? message.content[0].text : '';
       
-      // Extract JSON from the response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new LLMError('Invalid response format from Claude', 'PROVIDER_ERROR', 'anthropic');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      return parsed.map((q: any) => ({
-        text: q.text || q.question,
-        suggestedCategories: q.categories || q.suggestedCategories || [],
-        suggestedTraits: q.traits || q.suggestedTraits || [],
-        difficulty: q.difficulty || 'medium',
-        reasoning: q.reasoning
-      }));
+      return this.parseQuestionResponse(content);
 
     } catch (error: any) {
+      if (error instanceof LLMError) throw error;
+      
       if (error.status === 401) {
         throw new LLMError('Invalid Anthropic API key', 'INVALID_API_KEY', 'anthropic');
       }
