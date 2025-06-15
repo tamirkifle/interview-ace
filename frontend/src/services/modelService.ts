@@ -6,24 +6,84 @@ class ModelService {
   // Default models as fallback
   private readonly DEFAULT_MODELS: Record<LLMProvider, ModelInfo[]> = {
     openai: [
-      { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', displayName: 'GPT-4 Turbo (Latest)' },
-      { id: 'gpt-4', name: 'GPT-4', displayName: 'GPT-4' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', displayName: 'GPT-3.5 Turbo' }
+      { 
+        id: 'gpt-4-turbo-preview', 
+        name: 'GPT-4 Turbo', 
+        displayName: 'GPT-4 Turbo',
+        description: 'Most capable model, best for complex tasks with 128k context window'
+      },
+      { 
+        id: 'gpt-4', 
+        name: 'GPT-4', 
+        displayName: 'GPT-4',
+        description: 'High capability model with 8k context window'
+      },
+      { 
+        id: 'gpt-3.5-turbo', 
+        name: 'GPT-3.5 Turbo', 
+        displayName: 'GPT-3.5 Turbo',
+        description: 'Fast and efficient, good for most tasks'
+      }
     ],
     anthropic: [
-      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', displayName: 'Claude 3 Opus' },
-      { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', displayName: 'Claude 3 Sonnet' },
-      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', displayName: 'Claude 3 Haiku' }
+      { 
+        id: 'claude-3-opus-20240229', 
+        name: 'Claude 3 Opus', 
+        displayName: 'Claude 3 Opus',
+        description: 'Most powerful model for complex analysis and generation'
+      },
+      { 
+        id: 'claude-3-sonnet-20240229', 
+        name: 'Claude 3 Sonnet', 
+        displayName: 'Claude 3 Sonnet',
+        description: 'Balanced performance and speed'
+      },
+      { 
+        id: 'claude-3-haiku-20240307', 
+        name: 'Claude 3 Haiku', 
+        displayName: 'Claude 3 Haiku',
+        description: 'Fastest model for simple tasks'
+      }
     ],
     gemini: [
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', displayName: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', displayName: 'Gemini 1.5 Flash' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', displayName: 'Gemini 1.5 Pro' }
+      { 
+        id: 'gemini-2.0-flash', 
+        name: 'Gemini 2.0 Flash', 
+        displayName: 'Gemini 2.0 Flash',
+        description: 'Latest fast multimodal model with improved performance'
+      },
+      { 
+        id: 'gemini-1.5-flash', 
+        name: 'Gemini 1.5 Flash', 
+        displayName: 'Gemini 1.5 Flash',
+        description: 'Fast multimodal model optimized for efficiency'
+      },
+      { 
+        id: 'gemini-1.5-pro', 
+        name: 'Gemini 1.5 Pro', 
+        displayName: 'Gemini 1.5 Pro',
+        description: 'Advanced reasoning with 1M token context window'
+      }
     ],
     ollama: [
-      { id: 'llama3.1:latest', name: 'Llama 3.1', displayName: 'Llama 3.1 (Latest)' },
-      { id: 'mistral:latest', name: 'Mistral', displayName: 'Mistral (Latest)' },
-      { id: 'phi3:latest', name: 'Phi-3', displayName: 'Phi-3 (Latest)' }
+      { 
+        id: 'llama3.1:latest', 
+        name: 'Llama 3.1', 
+        displayName: 'Llama 3.1',
+        description: 'Meta\'s latest open model with strong performance'
+      },
+      { 
+        id: 'mistral:latest', 
+        name: 'Mistral', 
+        displayName: 'Mistral',
+        description: 'Efficient 7B parameter model'
+      },
+      { 
+        id: 'phi3:latest', 
+        name: 'Phi-3', 
+        displayName: 'Microsoft Phi-3',
+        description: 'Small but capable 3.8B parameter model'
+      }
     ]
   };
 

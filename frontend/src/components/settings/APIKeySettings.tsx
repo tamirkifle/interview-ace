@@ -3,6 +3,7 @@ import { Eye, EyeOff, Save, Trash2, AlertCircle, CheckCircle, RefreshCw } from '
 import { useAPIKeys } from '../../hooks/useAPIKeys';
 import { APIKeys, LLMProvider, ModelInfo } from '../../types/apiKeys';
 import { modelService } from '../../services/modelService';
+import { ModelSelector } from '../ui/ModelSelector';
 
 export const APIKeySettings = () => {
     const { apiKeys, saveAPIKeys, clearAPIKeys, getAPIKeyStatus } = useAPIKeys();
@@ -203,37 +204,33 @@ export const APIKeySettings = () => {
                             <>
                                 {/* Model Selection */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Model
-                                    </label>
-                                    <div className="flex">
-                                        <select
-                                            value={formData.llm?.model || ''}
-                                            onChange={(e) => handleInputChange('llm.model', e.target.value)}
-                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
-                                        >
-                                            <option value="">Select a model...</option>
-                                            {models[formData.llm.provider]?.map(model => (
-                                                <option key={model.id} value={model.id}>
-                                                    {model.displayName || model.name}
-                                                    {model.description && ` - ${model.description.substring(0, 50)}...`}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <button
-                                            onClick={() => handleRefreshModels(formData.llm!.provider as LLMProvider)}
-                                            disabled={isRefreshing}
-                                            className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50 disabled:opacity-50"
-                                            title="Refresh model list"
-                                        >
-                                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                                        </button>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Model
+                                </label>
+                                <div className="flex">
+                                    <div className="flex-1">
+                                    <ModelSelector
+                                        models={models[formData.llm.provider] || []}
+                                        value={formData.llm?.model || ''}
+                                        onChange={(value) => handleInputChange('llm.model', value)}
+                                        placeholder="Select a model..."
+                                        disabled={!models[formData.llm.provider] || models[formData.llm.provider].length === 0}
+                                    />
                                     </div>
-                                    {models[formData.llm.provider]?.length === 0 && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Click refresh to load available models
-                                        </p>
-                                    )}
+                                    <button
+                                    onClick={() => handleRefreshModels(formData.llm!.provider as LLMProvider)}
+                                    disabled={isRefreshing}
+                                    className="ml-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                                    title="Refresh model list"
+                                    >
+                                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                    </button>
+                                </div>
+                                {(!models[formData.llm.provider] || models[formData.llm.provider].length === 0) && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                    Click refresh to load available models
+                                    </p>
+                                )}
                                 </div>
 
                                 {/* OpenAI */}
