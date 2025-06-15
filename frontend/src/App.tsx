@@ -1,5 +1,3 @@
-// frontend/src/App.tsx
-
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -7,6 +5,7 @@ import { Stories } from './pages/Stories';
 import { CreateStory } from './pages/CreateStory';
 import { Practice } from './pages/Practice';
 import { Analytics } from './pages/Analytics';
+import { Settings } from './pages/Settings';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -25,6 +24,7 @@ function App() {
             <Route path="stories/new" element={<CreateStory />} />
             <Route path="practice" element={<Practice />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

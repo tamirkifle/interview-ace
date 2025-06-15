@@ -8,6 +8,7 @@ const navigation = [
   { name: 'Stories', path: '/stories' },
   { name: 'Practice', path: '/practice' },
   { name: 'Analytics', path: '/analytics' },
+  { name: 'Settings', path: '/settings' },
 ];
 
 interface SidebarProps {
