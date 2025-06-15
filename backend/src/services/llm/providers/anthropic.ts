@@ -4,10 +4,12 @@ import { GenerateQuestionsRequest, GeneratedQuestion, LLMError } from '../types'
 
 export class AnthropicProvider extends BaseLLMProvider {
   private client: Anthropic;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super(apiKey, 'anthropic');
     this.client = new Anthropic({ apiKey });
+    this.model = model || 'claude-3-opus-20240229';
   }
 
   async generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]> {
@@ -17,7 +19,7 @@ export class AnthropicProvider extends BaseLLMProvider {
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const message = await this.client.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: this.model,
         max_tokens: 2000,
         temperature: 0.7,
         system: systemPrompt,

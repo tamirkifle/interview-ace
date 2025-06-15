@@ -1,7 +1,8 @@
 export interface LLMContext {
     provider?: string;
     apiKey?: string;
-  }
+    model?: string;
+}
   
   export interface GenerateQuestionsRequest {
     categoryIds?: string[];

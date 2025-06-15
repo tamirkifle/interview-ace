@@ -4,10 +4,12 @@ import { GenerateQuestionsRequest, GeneratedQuestion, LLMError } from '../types'
 
 export class OpenAIProvider extends BaseLLMProvider {
   private client: OpenAI;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super(apiKey, 'openai');
     this.client = new OpenAI({ apiKey });
+    this.model = model || 'gpt-4-turbo-preview';
   }
 
   async generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]> {
@@ -17,7 +19,7 @@ export class OpenAIProvider extends BaseLLMProvider {
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const completion = await this.client.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: this.model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

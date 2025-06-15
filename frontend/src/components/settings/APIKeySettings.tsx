@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Save, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Save, Trash2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAPIKeys } from '../../hooks/useAPIKeys';
-import { APIKeys } from '../../types/apiKeys';
+import { APIKeys, LLMProvider, ModelInfo } from '../../types/apiKeys';
+import { modelService } from '../../services/modelService';
 
 export const APIKeySettings = () => {
     const { apiKeys, saveAPIKeys, clearAPIKeys, getAPIKeyStatus } = useAPIKeys();
@@ -9,6 +10,8 @@ export const APIKeySettings = () => {
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [showClearConfirm, setShowClearConfirm] = useState(false);
+    const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         if (apiKeys) {
@@ -16,33 +19,83 @@ export const APIKeySettings = () => {
         }
     }, [apiKeys]);
 
+    // Load cached models on mount
+    useEffect(() => {
+        const loadedModels: Record<string, ModelInfo[]> = {};
+        
+        (['openai', 'anthropic', 'gemini', 'ollama'] as LLMProvider[]).forEach(provider => {
+            loadedModels[provider] = modelService.getModelsForProvider(provider);
+        });
+        
+        setModels(loadedModels);
+    }, []);
+
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => {
-          const keys = { ...prev };
-          
-          if (field.includes('.')) {
-            const [parent, child] = field.split('.');
-            if (parent === 'ollama') {
-              keys.ollama = { ...keys.ollama, [child]: value };
-            } else if (parent === 'transcription') {
-              keys.transcription = { 
-                ...keys.transcription, 
-                [child]: child === 'enabled' ? value === 'true' : value 
-              };
-            } else if (parent === 'llm') {
-              keys.llm = { 
-                ...keys.llm, 
-                [child]: child === 'enabled' ? value === 'true' : value 
-              };
+            const keys = { ...prev };
+
+            if (field.includes('.')) {
+                const [parent, child] = field.split('.');
+                if (parent === 'ollama') {
+                    keys.ollama = { ...keys.ollama, [child]: value };
+                } else if (parent === 'transcription') {
+                    keys.transcription = {
+                        ...keys.transcription,
+                        [child]: child === 'enabled' ? value === 'true' : value
+                    };
+                } else if (parent === 'llm') {
+                    keys.llm = {
+                        ...keys.llm,
+                        [child]: child === 'enabled' ? value === 'true' : value
+                    };
+                }
+            } else {
+                keys[field as keyof APIKeys] = value as any;
             }
-          } else {
-            keys[field as keyof APIKeys] = value as any;
-          }
-          
-          return keys;
+
+            return keys;
         });
         setSaveStatus('idle');
-      };
+    };
+
+    const handleRefreshModels = async (provider: LLMProvider) => {
+        setIsRefreshing(true);
+        try {
+            let fetchedModels: ModelInfo[] = [];
+
+            switch (provider) {
+                case 'openai':
+                    if (formData.openai) {
+                        fetchedModels = await modelService.fetchOpenAIModels(formData.openai);
+                    }
+                    break;
+                case 'anthropic':
+                    if (formData.anthropic) {
+                        fetchedModels = await modelService.fetchAnthropicModels(formData.anthropic);
+                    }
+                    break;
+                case 'gemini':
+                    if (formData.gemini) {
+                        fetchedModels = await modelService.fetchGeminiModels(formData.gemini);
+                    }
+                    break;
+                case 'ollama':
+                    if (formData.ollama?.baseUrl) {
+                        fetchedModels = await modelService.fetchOllamaModels(formData.ollama.baseUrl);
+                    }
+                    break;
+            }
+
+            setModels(prev => ({
+                ...prev,
+                [provider]: fetchedModels
+            }));
+        } catch (error) {
+            console.error('Failed to refresh models:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const handleSave = () => {
         setSaveStatus('saving');
@@ -62,6 +115,7 @@ export const APIKeySettings = () => {
         setFormData({});
         setShowClearConfirm(false);
         setSaveStatus('idle');
+        modelService.clearCache();
     };
 
     const toggleShowKey = (field: string) => {
@@ -145,108 +199,148 @@ export const APIKeySettings = () => {
                             </select>
                         </div>
 
-                        {/* OpenAI */}
-                        {formData.llm?.provider === 'openai' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    OpenAI API Key
-                                </label>
-                                <div className="flex">
-                                    <input
-                                        type={showKeys.openai ? 'text' : 'password'}
-                                        value={formData.openai || ''}
-                                        onChange={(e) => handleInputChange('openai', e.target.value)}
-                                        placeholder="sk-..."
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
-                                    />
-                                    <button
-                                        onClick={() => toggleShowKey('openai')}
-                                        className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
-                                    >
-                                        {showKeys.openai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
+                        {formData.llm?.provider && (
+                            <>
+                                {/* Model Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Model
+                                    </label>
+                                    <div className="flex">
+                                        <select
+                                            value={formData.llm?.model || ''}
+                                            onChange={(e) => handleInputChange('llm.model', e.target.value)}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
+                                        >
+                                            <option value="">Select a model...</option>
+                                            {models[formData.llm.provider]?.map(model => (
+                                                <option key={model.id} value={model.id}>
+                                                    {model.displayName || model.name}
+                                                    {model.description && ` - ${model.description.substring(0, 50)}...`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={() => handleRefreshModels(formData.llm!.provider as LLMProvider)}
+                                            disabled={isRefreshing}
+                                            className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50 disabled:opacity-50"
+                                            title="Refresh model list"
+                                        >
+                                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                        </button>
+                                    </div>
+                                    {models[formData.llm.provider]?.length === 0 && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Click refresh to load available models
+                                        </p>
+                                    )}
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">platform.openai.com</a>
-                                </p>
-                            </div>
-                        )}
 
-                        {/* Anthropic */}
-                        {formData.llm?.provider === 'anthropic' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Anthropic API Key
-                                </label>
-                                <div className="flex">
-                                    <input
-                                        type={showKeys.anthropic ? 'text' : 'password'}
-                                        value={formData.anthropic || ''}
-                                        onChange={(e) => handleInputChange('anthropic', e.target.value)}
-                                        placeholder="sk-ant-..."
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
-                                    />
-                                    <button
-                                        onClick={() => toggleShowKey('anthropic')}
-                                        className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
-                                    >
-                                        {showKeys.anthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Get your key from <a href="https://console.anthropic.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">console.anthropic.com</a>
-                                </p>
-                            </div>
-                        )}
+                                {/* OpenAI */}
+                                {formData.llm?.provider === 'openai' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            OpenAI API Key
+                                        </label>
+                                        <div className="flex">
+                                            <input
+                                                type={showKeys.openai ? 'text' : 'password'}
+                                                value={formData.openai || ''}
+                                                onChange={(e) => handleInputChange('openai', e.target.value)}
+                                                placeholder="sk-..."
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
+                                            />
+                                            <button
+                                                onClick={() => toggleShowKey('openai')}
+                                                className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
+                                            >
+                                                {showKeys.openai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">platform.openai.com</a>
+                                        </p>
+                                    </div>
+                                )}
 
-                        {/* Google Gemini */}
-                        {formData.llm?.provider === 'gemini' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Google Gemini API Key
-                                </label>
-                                <div className="flex">
-                                    <input
-                                        type={showKeys.gemini ? 'text' : 'password'}
-                                        value={formData.gemini || ''}
-                                        onChange={(e) => handleInputChange('gemini', e.target.value)}
-                                        placeholder="AIza..."
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
-                                    />
-                                    <button
-                                        onClick={() => toggleShowKey('gemini')}
-                                        className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
-                                    >
-                                        {showKeys.gemini ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Google AI Studio</a>
-                                </p>
-                            </div>
-                        )}
+                                {/* Anthropic */}
+                                {formData.llm?.provider === 'anthropic' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Anthropic API Key
+                                        </label>
+                                        <div className="flex">
+                                            <input
+                                                type={showKeys.anthropic ? 'text' : 'password'}
+                                                value={formData.anthropic || ''}
+                                                onChange={(e) => handleInputChange('anthropic', e.target.value)}
+                                                placeholder="sk-ant-..."
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
+                                            />
+                                            <button
+                                                onClick={() => toggleShowKey('anthropic')}
+                                                className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
+                                            >
+                                                {showKeys.anthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Get your key from <a href="https://console.anthropic.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">console.anthropic.com</a>
+                                        </p>
+                                    </div>
+                                )}
 
-                        {/* Ollama */}
-                        {formData.llm?.provider === 'ollama' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Ollama Base URL
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.ollama?.baseUrl || ''}
-                                    onChange={(e) => handleInputChange('ollama.baseUrl', e.target.value)}
-                                    placeholder="http://localhost:11434"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    For local Ollama installation. No API key needed.
-                                </p>
-                            </div>
+                                {/* Google Gemini */}
+                                {formData.llm?.provider === 'gemini' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Google Gemini API Key
+                                        </label>
+                                        <div className="flex">
+                                            <input
+                                                type={showKeys.gemini ? 'text' : 'password'}
+                                                value={formData.gemini || ''}
+                                                onChange={(e) => handleInputChange('gemini', e.target.value)}
+                                                placeholder="AIza..."
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-primary-500 focus:border-primary-500"
+                                            />
+                                            <button
+                                                onClick={() => toggleShowKey('gemini')}
+                                                className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-50"
+                                            >
+                                                {showKeys.gemini ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Google AI Studio</a>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Ollama */}
+                                {formData.llm?.provider === 'ollama' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Ollama Base URL
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.ollama?.baseUrl || ''}
+                                            onChange={(e) => handleInputChange('ollama.baseUrl', e.target.value)}
+                                            placeholder="http://localhost:11434"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            For local Ollama installation. No API key needed.
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
             </div>
+
             {/* Transcription Providers */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -313,7 +407,6 @@ export const APIKeySettings = () => {
                 )}
             </div>
 
-
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
                 <button
@@ -364,7 +457,7 @@ export const APIKeySettings = () => {
                     <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Clear All API Keys?</h3>
                         <p className="text-sm text-gray-600 mb-4">
-                            This will remove all stored API keys. You'll need to re-enter them to use AI features again.
+                            This will remove all stored API keys and cached models. You'll need to re-enter them to use AI features again.
                         </p>
                         <div className="flex justify-end space-x-3">
                             <button

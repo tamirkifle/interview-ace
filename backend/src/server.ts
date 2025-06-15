@@ -104,6 +104,7 @@ async function startServer() {
           const llmContext = {
             provider: req.headers['x-llm-provider'] as string,
             apiKey: req.headers['x-llm-key'] as string,
+            model: req.headers['x-llm-model'] as string,
           };
     
           // Extract transcription headers (for future use)

@@ -4,27 +4,27 @@ import { GenerateQuestionsRequest, GeneratedQuestion, LLMError } from '../types'
 
 export class GeminiProvider extends BaseLLMProvider {
   private client: GoogleGenerativeAI;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super(apiKey, 'gemini');
     this.client = new GoogleGenerativeAI(apiKey);
+    this.model = model || 'gemini-1.5-flash';
   }
 
   async generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]> {
     this.validateRequest(request);
 
     try {
-      const model = this.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const genModel = this.client.getGenerativeModel({ model: this.model });
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
 
-      const result = await model.generateContent(prompt);
+      const result = await genModel.generateContent(prompt);
       const response = await result.response;
       const content = response.text();
-      console.log(prompt);
-      console.log('--------------------------------');
-      console.log(content);
+
       return this.parseQuestionResponse(content);
 
     } catch (error: any) {
@@ -46,10 +46,10 @@ export class GeminiProvider extends BaseLLMProvider {
 
   async validateApiKey(): Promise<boolean> {
     try {
-      const model = this.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const res = await model.generateContent('Test');
+      const genModel = this.client.getGenerativeModel({ model: this.model });
+      await genModel.generateContent('Test');
       return true;
-    } catch (error: any) {
+    } catch {
       return false;
     }
   }

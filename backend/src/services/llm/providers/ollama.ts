@@ -11,11 +11,13 @@ interface OllamaGenerateResponse {
 
 export class OllamaProvider extends BaseLLMProvider {
   private baseUrl: string;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super('ollama', 'ollama'); // Ollama doesn't use API keys
     // The apiKey parameter is actually the base URL for Ollama
     this.baseUrl = apiKey || 'http://localhost:11434';
+    this.model = model || 'llama2';
   }
 
   async generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]> {
@@ -27,7 +29,7 @@ export class OllamaProvider extends BaseLLMProvider {
       const response = await axios.post<OllamaGenerateResponse>(
         `${this.baseUrl}/api/generate`, 
         {
-          model: 'llama2',
+          model: this.model,
           prompt: `${systemPrompt}\n\n${userPrompt}`,
           stream: false,
           format: 'json'

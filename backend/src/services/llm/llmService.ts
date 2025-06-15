@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class LLMService {
   private getProvider(context: LLMContext): LLMProvider {
-    const { provider, apiKey } = context;
+    const { provider, apiKey, model } = context;
 
     if (!provider) {
       throw new LLMError('No LLM provider specified', 'INVALID_REQUEST', 'unknown');
@@ -19,13 +19,13 @@ export class LLMService {
 
     switch (provider) {
       case 'openai':
-        return new OpenAIProvider(apiKey);
+        return new OpenAIProvider(apiKey, model);
       case 'anthropic':
-        return new AnthropicProvider(apiKey);
+        return new AnthropicProvider(apiKey, model);
       case 'gemini':
-        return new GeminiProvider(apiKey);
+        return new GeminiProvider(apiKey, model);
       case 'ollama':
-        return new OllamaProvider(apiKey); // apiKey is baseUrl for Ollama
+        return new OllamaProvider(apiKey, model); // apiKey is baseUrl for Ollama
       default:
         throw new LLMError(`Unknown provider: ${provider}`, 'INVALID_REQUEST', provider);
     }
