@@ -51,23 +51,14 @@ export abstract class BaseLLMProvider implements LLMProvider {
   }> {
     const categories = await this.promptGenerator.getCategories(request.categoryIds || []);
     const traits = await this.promptGenerator.getTraits(request.traitIds || []);
-
-    let systemPrompt = this.promptGenerator.buildSystemPrompt();
-    let userPrompt: string;
-
-    if (request.jobDescription && !request.categoryIds?.length) {
-      // Pure job description based generation
-      const analysis = this.jobAnalyzer.analyzeJobDescription(request.jobDescription);
-      userPrompt = this.jobAnalyzer.buildContextualPrompt(analysis, request.jobDescription);
-    } else {
-      // Category/trait based or mixed generation
-      userPrompt = await this.promptGenerator.buildUserPrompt(
-        request,
-        categories,
-        traits
-      );
-    }
-
+  
+    const systemPrompt = this.promptGenerator.buildSystemPrompt();
+    const userPrompt = await this.promptGenerator.buildUserPrompt(
+      request,
+      categories,
+      traits
+    );
+  
     return { systemPrompt, userPrompt };
   }
 

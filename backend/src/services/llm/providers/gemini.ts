@@ -14,7 +14,7 @@ export class GeminiProvider extends BaseLLMProvider {
     this.validateRequest(request);
 
     try {
-      const model = this.client.getGenerativeModel({ model: 'gemini-pro' });
+      const model = this.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
@@ -22,7 +22,9 @@ export class GeminiProvider extends BaseLLMProvider {
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const content = response.text();
-
+      console.log(prompt);
+      console.log('--------------------------------');
+      console.log(content);
       return this.parseQuestionResponse(content);
 
     } catch (error: any) {
@@ -44,10 +46,10 @@ export class GeminiProvider extends BaseLLMProvider {
 
   async validateApiKey(): Promise<boolean> {
     try {
-      const model = this.client.getGenerativeModel({ model: 'gemini-pro' });
-      await model.generateContent('Test');
+      const model = this.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const res = await model.generateContent('Test');
       return true;
-    } catch {
+    } catch (error: any) {
       return false;
     }
   }

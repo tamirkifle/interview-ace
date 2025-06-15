@@ -82,20 +82,4 @@ export class JobDescriptionAnalyzer {
         seniorityLevel
       };
     }
-  
-    buildContextualPrompt(
-      jobAnalysis: ReturnType<typeof this.analyzeJobDescription>,
-      jobDescription: string
-    ): string {
-      return `Based on this job analysis:
-  - Seniority Level: ${jobAnalysis.seniorityLevel}
-  - Key Categories: ${jobAnalysis.suggestedCategories.join(', ')}
-  - Key Traits: ${jobAnalysis.suggestedTraits.join(', ')}
-  - Technical Skills: ${jobAnalysis.keySkills.slice(0, 5).join(', ')}
-  
-  Original Job Description:
-  ${jobDescription}
-  
-  Generate behavioral questions appropriate for a ${jobAnalysis.seniorityLevel}-level candidate that would assess their readiness for this specific role. Focus on real-world scenarios they would face in this position.`;
-    }
   }

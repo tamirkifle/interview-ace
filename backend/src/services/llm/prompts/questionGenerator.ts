@@ -1,6 +1,7 @@
 import { CategoryService } from '../../categoryService';
 import { TraitService } from '../../traitService';
 import { Category, Trait } from '../../storyService';
+import { JobDescriptionAnalyzer } from './jobDescriptionAnalyzer';
 
 export class QuestionGeneratorPrompts {
   private categoryService: CategoryService;
@@ -101,15 +102,26 @@ Difficulty Levels:
     const count = request.count || 5;
     const categoryDetails = this.getCategoryPromptDetails();
     const traitDetails = this.getTraitPromptDetails();
-
+  
     let prompt = `Generate exactly ${count} behavioral interview questions`;
-
-    if (request.difficulty) {
-      prompt += ` at ${request.difficulty} difficulty level`;
-    } else {
-      prompt += ` with a mix of difficulty levels`;
+  
+    // If job description is provided but no categories, analyze it first
+    if (request.jobDescription && (!categories || categories.length === 0)) {
+      const jobAnalyzer = new JobDescriptionAnalyzer();
+      const analysis = jobAnalyzer.analyzeJobDescription(request.jobDescription);
+      
+      prompt += `\n\nBased on this job description analysis:
+  - Seniority Level: ${analysis.seniorityLevel}
+  - Suggested focus areas: ${analysis.suggestedCategories.join(', ')}
+  - Key skills to assess: ${analysis.keySkills.slice(0, 5).join(', ')}`;
     }
-
+  
+    if (request.difficulty) {
+      prompt += `\n\nGenerate questions at ${request.difficulty} difficulty level`;
+    } else {
+      prompt += `\n\nGenerate questions with a mix of difficulty levels`;
+    }
+  
     if (categories.length > 0) {
       prompt += `\n\nFocus on these behavioral categories:\n`;
       categories.forEach(cat => {
@@ -117,7 +129,7 @@ Difficulty Levels:
         prompt += `- ${cat.name}: ${detail}\n`;
       });
     }
-
+  
     if (traits.length > 0) {
       prompt += `\n\nAssess these specific traits:\n`;
       traits.forEach(trait => {
@@ -125,23 +137,41 @@ Difficulty Levels:
         prompt += `- ${trait.name}: ${detail}\n`;
       });
     }
-
+  
     if (request.jobDescription) {
-      prompt += `\n\nJob Context:\n${request.jobDescription}\n`;
-      prompt += `\nTailor questions to be relevant to this role while maintaining behavioral interview best practices.`;
+      prompt += `\n\nJob Description:\n${request.jobDescription}\n`;
+      prompt += `\nTailor questions to be relevant to this specific role while maintaining behavioral interview best practices.`;
     }
-
-    prompt += `\n\nFor each question, provide a JSON object with:
-{
-  "text": "The complete question text",
-  "suggestedCategories": ["Category names from the list above that this question assesses"],
-  "suggestedTraits": ["Trait names from the list above that this question evaluates"],
-  "difficulty": "easy|medium|hard",
-  "reasoning": "Brief explanation of why this is an effective behavioral question"
-}
-
-Return an array of exactly ${count} question objects. Ensure variety in the questions - avoid similar themes or situations. Each question should feel distinct and probe different aspects of the candidate's experience.`;
-
+  
+    // This part ensures JSON format for ALL cases
+    prompt += `\n\nFor each question, provide a JSON object with the following structure:
+  {
+    "text": "The complete question text",
+    "suggestedCategories": ["Category names that this question assesses"],
+    "suggestedTraits": ["Trait names that this question evaluates"],
+    "difficulty": "easy|medium|hard",
+    "reasoning": "Brief explanation of why this is an effective behavioral question"
+  }
+  
+  IMPORTANT FORMATTING REQUIREMENTS:
+  - Return ONLY a valid JSON array containing exactly ${count} question objects
+  - Start your response with [ and end with ]
+  - Do NOT include any markdown formatting, code blocks, or explanatory text
+  - Do NOT wrap the JSON in \`\`\`json blocks
+  - Each question object must have all five fields: text, suggestedCategories, suggestedTraits, difficulty, reasoning
+  - Ensure the JSON is valid and can be parsed directly
+  
+  Example of the expected format:
+  [
+    {
+      "text": "Tell me about a time when you led a team through a challenging project",
+      "suggestedCategories": ["Leadership", "Teamwork"],
+      "suggestedTraits": ["Initiative", "Collaboration"],
+      "difficulty": "medium",
+      "reasoning": "This question effectively assesses leadership skills and team collaboration"
+    }
+  ]`;
+  
     return prompt;
   }
 

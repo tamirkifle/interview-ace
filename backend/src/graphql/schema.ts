@@ -70,6 +70,22 @@ export const typeDefs = gql`
     matchedTraits: [Trait!]!
   }
 
+  # Question Generation Types
+  type GeneratedQuestion {
+    text: String!
+    suggestedCategories: [Category!]!
+    suggestedTraits: [Trait!]!
+    difficulty: String!
+    reasoning: String!
+  }
+
+  type QuestionGenerationResult {
+    questions: [GeneratedQuestion!]!
+    generationId: String!
+    sourceType: String!
+    provider: String!
+  }
+
   type Query {
     # Health checks
     health: String!
@@ -85,7 +101,11 @@ export const typeDefs = gql`
     questions: [Question!]!
     question(id: ID!): Question
     recording(id: ID!): Recording
-    recordingsByQuestion(questionId: ID!): [Recording!]!  # Add this line
+    recordingsByQuestion(questionId: ID!): [Recording!]!
+
+    # Question Generation
+    generateQuestions(input: GenerateQuestionsInput!): QuestionGenerationResult!
+    validateLLMKey: Boolean!
   }
 
   input CreateStoryInput {
@@ -98,7 +118,7 @@ export const typeDefs = gql`
     traitIds: [ID!]
   }
 
-  input CreateRecordingInput {  # Add this input type
+  input CreateRecordingInput {
     questionId: ID!
     storyId: ID
     duration: Int!
@@ -106,9 +126,17 @@ export const typeDefs = gql`
     minioKey: String!
   }
 
+  input GenerateQuestionsInput {
+    categoryIds: [ID!]
+    traitIds: [ID!]
+    jobDescription: String
+    count: Int = 5
+    difficulty: String
+  }
+
   type Mutation {
     createStory(input: CreateStoryInput!): Story!
-    createRecording(input: CreateRecordingInput!): Recording!  # Add this mutation
-    deleteRecording(id: ID!): Boolean!  # Add this mutation
+    createRecording(input: CreateRecordingInput!): Recording!
+    deleteRecording(id: ID!): Boolean!
   }
 `;
