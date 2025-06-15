@@ -98,7 +98,26 @@ async function startServer() {
     app.use(
       '/graphql',
       json(),
-      expressMiddleware(server)
+      expressMiddleware(server, {
+        context: async ({ req }) => {
+          // Extract LLM headers
+          const llmContext = {
+            provider: req.headers['x-llm-provider'] as string,
+            apiKey: req.headers['x-llm-key'] as string,
+          };
+    
+          // Extract transcription headers (for future use)
+          const transcriptionContext = {
+            provider: req.headers['x-transcription-provider'] as string,
+            apiKey: req.headers['x-transcription-key'] as string,
+          };
+    
+          return {
+            llmContext,
+            transcriptionContext,
+          };
+        },
+      })
     );
 
     app.listen(PORT, () => {
