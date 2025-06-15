@@ -107,10 +107,11 @@ async function startServer() {
             model: req.headers['x-llm-model'] as string,
           };
     
-          // Extract transcription headers (for future use)
+          // Extract transcription headers
           const transcriptionContext = {
             provider: req.headers['x-transcription-provider'] as string,
             apiKey: req.headers['x-transcription-key'] as string,
+            whisperEndpoint: req.headers['x-transcription-whisper-endpoint'] as string,
           };
     
           return {

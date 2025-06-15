@@ -7,7 +7,7 @@ import { neo4jConnection } from '../../db/neo4j';
 
 export class TranscriptionService {
   private getProvider(context: TranscriptionContext): TranscriptionProvider | null {
-    const { provider, apiKey } = context;
+    const { provider, apiKey, whisperEndpoint } = context;
 
     if (!provider) {
       return null;
@@ -15,7 +15,7 @@ export class TranscriptionService {
 
     // For local provider, no API key needed
     if (provider === 'local') {
-      return new WhisperLocalProvider();
+      return new WhisperLocalProvider(whisperEndpoint);
     }
 
     if (!apiKey) {

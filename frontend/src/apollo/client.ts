@@ -55,20 +55,33 @@ const authLink = new ApolloLink((operation, forward) => {
   // Add transcription headers if configured and enabled
   if (apiKeys?.transcription?.enabled && apiKeys.transcription.provider) {
     const provider = apiKeys.transcription.provider;
-    let apiKey: string | undefined;
     
-    if (provider === 'openai' && !apiKeys.transcription.apiKey) {
-      // Use OpenAI key if transcription key not provided
-      apiKey = apiKeys.openai;
-    } else if (provider !== 'local') {
-      apiKey = apiKeys.transcription.apiKey;
-    }
+    headers['x-transcription-provider'] = provider;
     
-    if (apiKey || provider === 'local') {
-      headers['x-transcription-provider'] = provider;
-      if (apiKey) {
-        headers['x-transcription-key'] = apiKey;
-      }
+    switch (provider) {
+      case 'local':
+        // For local, we don't need an API key but need the endpoint
+        headers['x-transcription-whisper-endpoint'] = apiKeys.transcription.whisperEndpoint || 'http://localhost:9002';
+        break;
+        
+      case 'openai':
+        // Use OpenAI key if transcription key not provided
+        const openaiKey = apiKeys.transcription.apiKey || apiKeys.openai;
+        if (openaiKey) {
+          headers['x-transcription-key'] = openaiKey;
+        }
+        break;
+        
+      case 'google':
+        // TODO: Add Google support
+        break;
+        
+      case 'aws':
+        // These require their own API keys
+        if (apiKeys.transcription.apiKey) {
+          headers['x-transcription-key'] = apiKeys.transcription.apiKey;
+        }
+        break;
     }
   }
   

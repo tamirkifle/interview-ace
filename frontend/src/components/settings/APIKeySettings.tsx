@@ -400,6 +400,25 @@ export const APIKeySettings = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Local Whisper */}
+                        {formData.transcription?.provider && formData.transcription?.provider === 'local' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Whisper Endpoint URL
+                            </label>
+                            <input
+                            type="text"
+                            value={formData.transcription?.whisperEndpoint || ''}
+                            onChange={(e) => handleInputChange('transcription.whisperEndpoint', e.target.value)}
+                            placeholder="http://localhost:9002"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                            URL of your Whisper service. Can be local or remote.
+                            </p>
+                        </div>
+                        )}
                     </div>
                 )}
             </div>

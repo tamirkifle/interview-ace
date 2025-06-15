@@ -1,6 +1,7 @@
 export interface TranscriptionContext {
     provider?: string;
     apiKey?: string;
+    whisperEndpoint?: string;
   }
   
   export interface TranscriptionJob {

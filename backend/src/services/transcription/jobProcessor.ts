@@ -10,7 +10,8 @@ export class TranscriptionJobProcessor {
     context: TranscriptionContext
   ): Promise<void> {
     // Check if transcription is requested
-    if (!context.provider || !context.apiKey) {
+    // Local provider doesn't need an API key
+    if (!context.provider || (!context.apiKey && context.provider !== 'local')) {
       console.log(`No transcription requested for recording ${recordingId}`);
       await transcriptionService.updateRecordingStatus(recordingId, 'NONE');
       return;

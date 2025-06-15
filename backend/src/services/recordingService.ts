@@ -133,7 +133,7 @@ export class RecordingService {
       const recording = result.records[0].get('r').properties;
 
       // Queue transcription job if context provided
-      if (transcriptionContext?.provider && transcriptionContext?.apiKey) {
+      if (transcriptionContext?.provider && (transcriptionContext?.apiKey || transcriptionContext.provider === 'local')) {
         // Process transcription asynchronously
         transcriptionJobProcessor.processRecording(
           recordingId,
