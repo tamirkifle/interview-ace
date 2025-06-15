@@ -25,3 +25,25 @@ export const DELETE_RECORDING = gql`
     deleteRecording(id: $id)
   }
 `;
+
+export const CREATE_CUSTOM_QUESTION = gql`
+  mutation CreateCustomQuestion($input: CreateCustomQuestionInput!) {
+    createCustomQuestion(input: $input) {
+      id
+      text
+      difficulty
+      commonality
+      createdAt
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { Play, Sparkles, BookOpen, Library } from 'lucide-react';
+import { Play, Sparkles, BookOpen, Library, Plus } from 'lucide-react';
 import { GET_QUESTIONS } from '../graphql/queries';
 import { LoadingSpinner } from '../components/ui';
 import { PracticeSession } from '../components/practice/PracticeSession';
@@ -10,13 +10,15 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { GraphQLErrorBoundary } from '../components/GraphQLErrorBoundary';
 import { Question, QuestionGenerationResult, GeneratedQuestion } from '../types';
 import { useAPIKeys } from '../hooks/useAPIKeys';
+import { CustomQuestion } from '../components/practice/CustomQuestion';
 
 export const Practice = () => {
   const { data, loading, error, refetch } = useQuery(GET_QUESTIONS);
   const { getAPIKeyStatus } = useAPIKeys();
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
-  const [activeTab, setActiveTab] = useState<'library' | 'practice' | 'generate'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'practice' | 'generate' | 'custom'>('library');
+
   const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
 
   const questions = data?.questions || [];
@@ -125,7 +127,7 @@ export const Practice = () => {
                 <nav className="-mb-px flex space-x-8">
                   <button
                     onClick={() => setActiveTab('library')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'library'
                         ? 'border-primary-500 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -136,7 +138,7 @@ export const Practice = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('practice')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'practice'
                         ? 'border-primary-500 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -147,7 +149,7 @@ export const Practice = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('generate')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'generate'
                         ? 'border-primary-500 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -160,6 +162,17 @@ export const Practice = () => {
                         Setup Required
                       </span>
                     )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('custom')}
+                    className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'custom'
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 inline mr-2" />
+                    Custom Question
                   </button>
                 </nav>
               </div>
@@ -309,6 +322,19 @@ export const Practice = () => {
                       isConfigured={isLLMConfigured}
                     />
                   )}
+                </div>
+              )}
+
+              {activeTab === 'custom' && (
+                <div className="max-w-3xl mx-auto">
+                  <CustomQuestion
+                    onQuestionCreated={(questionId) => {
+                      // Optionally switch to library tab to show the new question
+                      setActiveTab('library');
+                      // Or start a practice session with the new question
+                      // You could fetch the question and start practice here
+                    }}
+                  />
                 </div>
               )}
             </div>

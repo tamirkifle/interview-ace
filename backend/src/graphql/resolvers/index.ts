@@ -131,6 +131,47 @@ export const resolvers = {
     },
     deleteRecording: async (_: any, { id }: { id: string }) => {
       return recordingService.deleteRecording(id);
+    },
+    createCustomQuestion: async (_: any, { input }: { input: any }) => {
+      const { text, categoryIds, traitIds, difficulty } = input;
+      
+      // Validation
+      if (text.trim().length < 20) {
+        throw new GraphQLError('Question must be at least 20 characters long', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      if ((!categoryIds || categoryIds.length === 0) && (!traitIds || traitIds.length === 0)) {
+        throw new GraphQLError('At least one category or trait must be selected', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      const validDifficulties = ['easy', 'medium', 'hard'];
+      if (!validDifficulties.includes(difficulty)) {
+        throw new GraphQLError('Invalid difficulty level', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      // Check for duplicates
+      const existingQuestion = await questionService.findByText(text.trim());
+      if (existingQuestion) {
+        throw new GraphQLError('This question already exists', {
+          extensions: { code: 'DUPLICATE_ERROR' }
+        });
+      }
+      
+      // Create the question
+      return questionService.createQuestion({
+        text: text.trim(),
+        categoryIds: categoryIds || [],
+        traitIds: traitIds || [],
+        difficulty,
+        commonality: 5, // Default commonality for custom questions
+        source: 'custom' // Track that this was user-created
+      });
     }
   },
 
