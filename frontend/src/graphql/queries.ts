@@ -143,3 +143,36 @@ export const GET_MATCHING_STORIES = gql`
     }
   }
 `;
+
+// Question Generation Queries
+export const GENERATE_QUESTIONS = gql`
+  query GenerateQuestions($input: GenerateQuestionsInput!) {
+    generateQuestions(input: $input) {
+      questions {
+        text
+        difficulty
+        reasoning
+        suggestedCategories {
+          id
+          name
+          color
+          description
+        }
+        suggestedTraits {
+          id
+          name
+          description
+        }
+      }
+      generationId
+      sourceType
+      provider
+    }
+  }
+`;
+
+export const VALIDATE_LLM_KEY = gql`
+  query ValidateLLMKey {
+    validateLLMKey
+  }
+`;

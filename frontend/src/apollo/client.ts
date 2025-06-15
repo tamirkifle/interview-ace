@@ -1,5 +1,7 @@
-import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
+import { ApolloClient, InMemoryCache, HttpLink, from, ApolloLink } from '@apollo/client';
 import { onError } from '@apollo/client/link/error';
+import { secureStorage } from '../utils/secureStorage';
+import { APIKeys } from '../types/apiKeys';
 
 // Error handling link
 const errorLink = onError(({ graphQLErrors, networkError }) => {
@@ -15,6 +17,68 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 });
 
+// Auth link to add API key headers
+const authLink = new ApolloLink((operation, forward) => {
+  const apiKeys: APIKeys | null = secureStorage.load();
+  
+  const headers: Record<string, string> = {};
+  
+  // Add LLM headers if configured and enabled
+  if (apiKeys?.llm?.enabled && apiKeys.llm.provider) {
+    const provider = apiKeys.llm.provider;
+    let apiKey: string | undefined;
+    
+    switch (provider) {
+      case 'openai':
+        apiKey = apiKeys.openai;
+        break;
+      case 'anthropic':
+        apiKey = apiKeys.anthropic;
+        break;
+      case 'gemini':
+        apiKey = apiKeys.gemini;
+        break;
+      case 'ollama':
+        apiKey = apiKeys.ollama?.baseUrl;
+        break;
+    }
+    
+    if (apiKey) {
+      headers['x-llm-provider'] = provider;
+      headers['x-llm-key'] = apiKey;
+      if (apiKeys.llm.model) {
+        headers['x-llm-model'] = apiKeys.llm.model;
+      }
+    }
+  }
+  
+  // Add transcription headers if configured and enabled
+  if (apiKeys?.transcription?.enabled && apiKeys.transcription.provider) {
+    const provider = apiKeys.transcription.provider;
+    let apiKey: string | undefined;
+    
+    if (provider === 'openai' && !apiKeys.transcription.apiKey) {
+      // Use OpenAI key if transcription key not provided
+      apiKey = apiKeys.openai;
+    } else if (provider !== 'local') {
+      apiKey = apiKeys.transcription.apiKey;
+    }
+    
+    if (apiKey || provider === 'local') {
+      headers['x-transcription-provider'] = provider;
+      if (apiKey) {
+        headers['x-transcription-key'] = apiKey;
+      }
+    }
+  }
+  
+  operation.setContext({
+    headers
+  });
+  
+  return forward(operation);
+});
+
 // HTTP link
 const httpLink = new HttpLink({
   uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:4000/graphql',
@@ -25,7 +89,7 @@ const cache = new InMemoryCache();
 
 // Create Apollo Client instance
 const client = new ApolloClient({
-  link: from([errorLink, httpLink]),
+  link: from([errorLink, authLink, httpLink]),
   cache,
   connectToDevTools: true,
   defaultOptions: {
@@ -40,4 +104,4 @@ const client = new ApolloClient({
   },
 });
 
-export { client }; 
+export { client };

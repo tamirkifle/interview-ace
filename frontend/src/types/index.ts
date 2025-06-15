@@ -57,4 +57,28 @@ export interface StoryMatch {
   matchedTraits: Trait[];
 }
 
+// Question Generation Types
+export interface GeneratedQuestion {
+  text: string;
+  suggestedCategories: Category[];
+  suggestedTraits: Trait[];
+  difficulty: string;
+  reasoning: string;
+}
+
+export interface QuestionGenerationResult {
+  questions: GeneratedQuestion[];
+  generationId: string;
+  sourceType: string;
+  provider: string;
+}
+
+export interface GenerateQuestionsInput {
+  categoryIds?: string[];
+  traitIds?: string[];
+  jobDescription?: string;
+  count?: number;
+  difficulty?: string;
+}
+
 export * from './apiKeys';
