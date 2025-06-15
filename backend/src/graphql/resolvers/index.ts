@@ -119,15 +119,19 @@ export const resolvers = {
       } catch {
         return false;
       }
-    }
+    },
+    
+    recordingTranscriptionStatus: async (_: any, { id }: { id: string }) => {
+      return recordingService.getRecordingTranscriptionStatus(id);
+    },
   },
 
   Mutation: {
     createStory: async (_: any, { input }: { input: any }) => {
       return storyService.createStory(input);
     },
-    createRecording: async (_: any, { input }: { input: any }) => {
-      return recordingService.createRecording(input);
+    createRecording: async (_: any, { input }: { input: any }, context: any) => {
+      return recordingService.createRecording(input, context.transcriptionContext);
     },
     deleteRecording: async (_: any, { id }: { id: string }) => {
       return recordingService.deleteRecording(id);

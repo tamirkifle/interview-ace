@@ -117,6 +117,8 @@ export const typeDefs = gql`
     # Question Generation
     generateQuestions(input: GenerateQuestionsInput!): QuestionGenerationResult!
     validateLLMKey: Boolean!
+
+    recordingTranscriptionStatus(id: ID!): TranscriptionStatus
   }
 
   input CreateStoryInput {

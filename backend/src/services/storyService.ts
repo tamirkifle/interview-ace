@@ -45,7 +45,10 @@ export interface Recording {
   filename: string;
   duration: number;
   minio_key: string;
-  createdAt: Date;
+  createdAt: string;
+  transcript?: string;
+  transcriptStatus?: string;
+  transcriptedAt?: string;
 }
 
 export interface StoryMatch {

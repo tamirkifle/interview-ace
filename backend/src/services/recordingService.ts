@@ -2,6 +2,8 @@ import { neo4jConnection } from '../db/neo4j';
 import { Record } from 'neo4j-driver';
 import { Recording, Story, Question } from './storyService';
 import { v4 as uuidv4 } from 'uuid';
+import { transcriptionJobProcessor } from './transcription/jobProcessor';
+import { TranscriptionContext } from './transcription/types';
 
 export interface CreateRecordingData {
   questionId: string;
@@ -66,7 +68,10 @@ export class RecordingService {
     }
   }
 
-  async createRecording(input: CreateRecordingData): Promise<Recording> {
+  async createRecording(
+    input: CreateRecordingData, 
+    transcriptionContext?: TranscriptionContext
+  ): Promise<Recording> {
     const session = await neo4jConnection.getSession();
     try {
       const recordingId = uuidv4();
@@ -79,7 +84,9 @@ export class RecordingService {
         filename: input.filename,
         duration: input.duration,
         minioKey: input.minioKey,
-        timestamp
+        timestamp,
+        // Initialize transcript fields
+        transcriptStatus: transcriptionContext?.provider ? 'PENDING' : 'NONE'
       };
   
       if (input.storyId) {
@@ -93,7 +100,8 @@ export class RecordingService {
             filename: $filename,
             duration: $duration,
             minio_key: $minioKey,
-            createdAt: datetime($timestamp)
+            createdAt: datetime($timestamp),
+            transcriptStatus: $transcriptStatus
           })
           CREATE (r)-[:ANSWERS]->(q)
           CREATE (r)-[:RECORDS]->(s)
@@ -108,7 +116,8 @@ export class RecordingService {
             filename: $filename,
             duration: $duration,
             minio_key: $minioKey,
-            createdAt: datetime($timestamp)
+            createdAt: datetime($timestamp),
+            transcriptStatus: $transcriptStatus
           })
           CREATE (r)-[:ANSWERS]->(q)
           RETURN r
@@ -121,7 +130,21 @@ export class RecordingService {
         throw new Error('Failed to create recording - question or story not found');
       }
   
-      return result.records[0].get('r').properties;
+      const recording = result.records[0].get('r').properties;
+
+      // Queue transcription job if context provided
+      if (transcriptionContext?.provider && transcriptionContext?.apiKey) {
+        // Process transcription asynchronously
+        transcriptionJobProcessor.processRecording(
+          recordingId,
+          input.minioKey,
+          transcriptionContext
+        ).catch(error => {
+          console.error('Failed to process transcription:', error);
+        });
+      }
+
+      return recording;
     } catch (error) {
       console.error('Error creating recording:', error);
       throw error;
@@ -161,6 +184,25 @@ export class RecordingService {
     } catch (error) {
       console.error('Error deleting recording:', error);
       return false;
+    } finally {
+      await session.close();
+    }
+  }
+
+  // Add method to check transcription status
+  async getRecordingTranscriptionStatus(id: string): Promise<string | null> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (r:Recording {id: $id})
+        RETURN r.transcriptStatus as status
+      `, { id });
+      
+      if (result.records.length === 0) {
+        return null;
+      }
+      
+      return result.records[0].get('status');
     } finally {
       await session.close();
     }
