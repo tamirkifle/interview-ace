@@ -208,4 +208,74 @@ export class QuestionService {
       await session.close();
     }
   }
+
+  async updateQuestionFull(id: string, input: {
+    text: string;
+    difficulty: string;
+    categoryIds: string[];
+    traitIds: string[];
+  }): Promise<Question> {
+    const session = await neo4jConnection.getSession();
+    try {
+      // First, update the question and remove all existing relationships
+      await session.run(
+        `
+        MATCH (q:Question {id: $id})
+        SET q.text = $text,
+            q.difficulty = $difficulty,
+            q.updatedAt = datetime()
+        WITH q
+        OPTIONAL MATCH (q)-[r:TESTS_FOR]->()
+        DELETE r
+        `,
+        { 
+          id, 
+          text: input.text,
+          difficulty: input.difficulty
+        }
+      );
+  
+      // Then, create new relationships
+      if (input.categoryIds.length > 0) {
+        await session.run(
+          `
+          MATCH (q:Question {id: $id})
+          UNWIND $categoryIds AS categoryId
+          MATCH (c:Category {id: categoryId})
+          CREATE (q)-[:TESTS_FOR]->(c)
+          `,
+          { id, categoryIds: input.categoryIds }
+        );
+      }
+  
+      if (input.traitIds.length > 0) {
+        await session.run(
+          `
+          MATCH (q:Question {id: $id})
+          UNWIND $traitIds AS traitId
+          MATCH (t:Trait {id: traitId})
+          CREATE (q)-[:TESTS_FOR]->(t)
+          `,
+          { id, traitIds: input.traitIds }
+        );
+      }
+  
+      // Return the updated question
+      const result = await session.run(
+        `
+        MATCH (q:Question {id: $id})
+        RETURN q
+        `,
+        { id }
+      );
+  
+      if (result.records.length === 0) {
+        throw new Error('Question not found');
+      }
+  
+      return result.records[0].get('q').properties;
+    } finally {
+      await session.close();
+    }
+  }
 } 

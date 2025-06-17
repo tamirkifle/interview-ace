@@ -8,6 +8,7 @@ import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { Library } from './pages/Library';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { EditQuestion } from './pages/EditQuestion';
 
 
 function App() {  
@@ -26,6 +27,7 @@ function App() {
             <Route path="stories/new" element={<CreateStory />} />
             <Route path="practice" element={<Practice />} />
             <Route path="library" element={<Library />} />
+            <Route path="library/questions/:id/edit" element={<EditQuestion />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
           </Route>

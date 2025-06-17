@@ -195,6 +195,37 @@ export const resolvers = {
       }
       
       return questionService.deleteQuestions(ids);
+    },
+    
+    updateQuestionFull: async (_: any, { id, input }: { id: string; input: any }) => {
+      const { text, difficulty, categoryIds, traitIds } = input;
+      
+      // Validation
+      if (!text || text.trim().length < 20) {
+        throw new GraphQLError('Question must be at least 20 characters long', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      if ((!categoryIds || categoryIds.length === 0) && (!traitIds || traitIds.length === 0)) {
+        throw new GraphQLError('At least one category or trait must be selected', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      const validDifficulties = ['easy', 'medium', 'hard'];
+      if (!validDifficulties.includes(difficulty)) {
+        throw new GraphQLError('Invalid difficulty level', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      return questionService.updateQuestionFull(id, {
+        text: text.trim(),
+        difficulty,
+        categoryIds,
+        traitIds
+      });
     }
   },
 

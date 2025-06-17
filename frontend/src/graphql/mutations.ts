@@ -74,3 +74,24 @@ export const DELETE_QUESTIONS = gql`
     deleteQuestions(ids: $ids)
   }
 `;
+
+export const UPDATE_QUESTION_FULL = gql`
+  mutation UpdateQuestionFull($id: ID!, $input: UpdateQuestionInput!) {
+    updateQuestionFull(id: $id, input: $input) {
+      id
+      text
+      difficulty
+      commonality
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;

@@ -1,21 +1,20 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
+import { useNavigate } from 'react-router-dom';
 import { GET_QUESTIONS, GET_CATEGORIES } from '../../graphql/queries';
-import { UPDATE_QUESTION, DELETE_QUESTIONS } from '../../graphql/mutations';
+import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question } from '../../types';
-import { Edit2, Trash2, Check, X, FileQuestion, ChevronUp, ChevronDown, AlertCircle } from 'lucide-react';
+import { Edit3, Trash2, FileQuestion, ChevronUp, ChevronDown, AlertCircle, X } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { format, parseISO, isValid } from 'date-fns';
 
 type SortField = 'text' | 'createdAt' | 'recordings' | 'difficulty';
 type SortOrder = 'asc' | 'desc';
-type FilterSource = 'all' | 'seeded' | 'generated' | 'custom';
+type FilterSource = 'all' | 'generated' | 'custom';
 
 export const QuestionsTable = () => {
+  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [editError, setEditError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [sourceFilter, setSourceFilter] = useState<FilterSource>('all');
@@ -29,7 +28,6 @@ export const QuestionsTable = () => {
   });
   const { data: categoriesData } = useQuery(GET_CATEGORIES);
 
-  const [updateQuestion] = useMutation(UPDATE_QUESTION);
   const [deleteQuestions] = useMutation(DELETE_QUESTIONS, {
     refetchQueries: [{ query: GET_QUESTIONS }]
   });
@@ -114,37 +112,36 @@ export const QuestionsTable = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(q => 
+      filtered = filtered.filter((q: Question) => 
         q.text.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Category filter
     if (categoryFilter) {
-      filtered = filtered.filter(q => 
+      filtered = filtered.filter((q: Question) => 
         q.categories.some((c: any) => c.id === categoryFilter)
       );
     }
 
-    // Source filter
+    // Source filter - treat seeded as generated
     if (sourceFilter !== 'all') {
-      filtered = filtered.filter(q => {
-        // Determine source based on question properties
-        const source = q.source || (q.id.startsWith('generated-') ? 'generated' : 'seeded');
+      filtered = filtered.filter((q: Question) => {
+        const source = q.source || 'generated';
         return source === sourceFilter;
       });
     }
 
     // Has recordings filter
     if (hasRecordingsFilter !== null) {
-      filtered = filtered.filter(q => {
+      filtered = filtered.filter((q: Question) => {
         const hasRecordings = (q.recordings?.length || 0) > 0;
         return hasRecordings === hasRecordingsFilter;
       });
     }
 
     // Sort
-    filtered.sort((a, b) => {
+    filtered.sort((a: Question, b: Question) => {
       let comparison = 0;
       
       switch (sortField) {
@@ -198,61 +195,6 @@ export const QuestionsTable = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleEdit = (question: Question) => {
-    setEditingId(question.id);
-    setEditText(question.text);
-    setEditError(null);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingId || !editText.trim()) return;
-
-    // Frontend validation
-    if (editText.trim().length < 20) {
-      setEditError('Question must be at least 20 characters long');
-      return;
-    }
-
-    setEditError(null);
-
-    try {
-      await updateQuestion({
-        variables: {
-          id: editingId,
-          text: editText.trim()
-        },
-        optimisticResponse: {
-          updateQuestion: {
-            __typename: 'Question',
-            id: editingId,
-            text: editText.trim(),
-            difficulty: questions.find((q: Question) => q.id === editingId)?.difficulty || 'medium',
-            commonality: questions.find((q: Question) => q.id === editingId)?.commonality || 5,
-            updatedAt: new Date().toISOString(),
-            categories: questions.find((q: Question) => q.id === editingId)?.categories || [],
-            traits: questions.find((q: Question) => q.id === editingId)?.traits || []
-          }
-        }
-      });
-      setEditingId(null);
-      setEditText('');
-      setEditError(null);
-    } catch (error: any) {
-      console.error('Failed to update question:', error);
-      // Extract error message from Apollo error
-      const errorMessage = error.graphQLErrors?.[0]?.message || 
-                          error.message || 
-                          'Failed to update question';
-      setEditError(errorMessage);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditText('');
-    setEditError(null);
-  };
-
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
 
@@ -281,16 +223,17 @@ export const QuestionsTable = () => {
   };
 
   const getSourceBadge = (question: Question) => {
-    const source = question.source || (question.id.startsWith('generated-') ? 'generated' : 'seeded');
+    // Treat seeded as generated
+    const source = question.source || 'generated';
+    const displaySource = source === 'seeded' ? 'generated' : source;
     const colors: { [key: string]: string } = {
-      seeded: 'bg-blue-100 text-blue-700',
       generated: 'bg-green-100 text-green-700',
       custom: 'bg-purple-100 text-purple-700'
     };
 
     return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${colors[source]}`}>
-        {source}
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${colors[displaySource] || colors.generated}`}>
+        {displaySource}
       </span>
     );
   };
@@ -366,7 +309,6 @@ export const QuestionsTable = () => {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="all">All Sources</option>
-            <option value="seeded">Seeded</option>
             <option value="generated">Generated</option>
             <option value="custom">Custom</option>
           </select>
@@ -426,6 +368,9 @@ export const QuestionsTable = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Categories
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Traits
+                </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                   onClick={() => handleSort('difficulty')}
@@ -468,7 +413,7 @@ export const QuestionsTable = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAndSortedQuestions.map((question) => (
+              {filteredAndSortedQuestions.map((question: Question) => (
                 <tr key={question.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <input
@@ -479,35 +424,7 @@ export const QuestionsTable = () => {
                     />
                   </td>
                   <td className="px-6 py-4">
-                    {editingId === question.id ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => {
-                            setEditText(e.target.value);
-                            // Clear error when user types
-                            if (editError) setEditError(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleSaveEdit();
-                            } else if (e.key === 'Escape') {
-                              handleCancelEdit();
-                            }
-                          }}
-                          className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                            editError ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          autoFocus
-                        />
-                        {editError && (
-                          <p className="text-xs text-red-600">{editError}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-900 max-w-xl">{question.text}</p>
-                    )}
+                    <p className="text-sm text-gray-900 max-w-xl">{question.text}</p>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
@@ -519,6 +436,20 @@ export const QuestionsTable = () => {
                           size="xs"
                         >
                           {cat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {question.traits.map((trait: any) => (
+                        <Badge
+                          key={trait.id}
+                          variant="outline"
+                          size="xs"
+                          className="w-max"
+                        >
+                          {trait.name}
                         </Badge>
                       ))}
                     </div>
@@ -540,49 +471,34 @@ export const QuestionsTable = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {editingId === question.id ? (
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={handleSaveEdit}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(question)}
-                          className="text-gray-600 hover:text-gray-900"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this question?')) {
-                              deleteQuestions({ 
-                                variables: { ids: [question.id] } 
-                              }).catch((error: any) => {
-                                console.error('Failed to delete question:', error);
-                                const errorMessage = error.graphQLErrors?.[0]?.message || 
-                                                    error.message || 
-                                                    'Failed to delete question';
-                                setDeleteError(errorMessage);
-                              });
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => navigate(`/library/questions/${question.id}/edit`)}
+                        className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded transition-colors"
+                        title="Edit question"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this question?')) {
+                            deleteQuestions({ 
+                              variables: { ids: [question.id] } 
+                            }).catch((error: any) => {
+                              console.error('Failed to delete question:', error);
+                              const errorMessage = error.graphQLErrors?.[0]?.message || 
+                                                  error.message || 
+                                                  'Failed to delete question';
+                              setDeleteError(errorMessage);
+                            });
+                          }
+                        }}
+                        className="p-1 text-red-600 hover:text-red-900 hover:bg-red-100 rounded transition-colors"
+                        title="Delete question"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

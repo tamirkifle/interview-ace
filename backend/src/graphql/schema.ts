@@ -154,6 +154,13 @@ export const typeDefs = gql`
     difficulty: String!
   }
 
+  input UpdateQuestionInput {
+    text: String!
+    difficulty: String!
+    categoryIds: [ID!]!
+    traitIds: [ID!]!
+  }
+
   type Mutation {
     createStory(input: CreateStoryInput!): Story!
     createRecording(input: CreateRecordingInput!): Recording!
@@ -161,5 +168,6 @@ export const typeDefs = gql`
     createCustomQuestion(input: CreateCustomQuestionInput!): Question!
     updateQuestion(id: ID!, text: String!): Question!
     deleteQuestions(ids: [ID!]!): Int!
+    updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!
   }
 `;
