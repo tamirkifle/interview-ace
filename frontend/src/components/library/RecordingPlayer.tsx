@@ -5,7 +5,7 @@ import {
   ChevronRight, 
   Calendar, 
   Clock, 
-  FileQuestion, 
+  MessageCircleQuestion, 
   BookOpen,
   X
 } from 'lucide-react';
@@ -167,7 +167,7 @@ export const RecordingPlayer = ({
 
           <div className="space-y-2">
             <div className="flex items-start space-x-2">
-              <FileQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
+              <MessageCircleQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
               <p className="text-sm text-gray-900">
                 {currentRecording.question?.text || 'No question text'}
               </p>

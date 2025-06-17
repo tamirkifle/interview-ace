@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { Play, Pause, Download, Trash2, Film, FileQuestion, BookOpen } from 'lucide-react';
+import { Play, Pause, Download, Trash2, Film, MessageCircleQuestion, BookOpen } from 'lucide-react';
 import { Recording } from '../../types';
 import { Link } from 'react-router-dom';
 
@@ -78,7 +78,7 @@ export const RecordingCard = ({
           
           <div className="space-y-2">
             <div className="flex items-start space-x-2">
-              <FileQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
+              <MessageCircleQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
               <p className="text-sm text-gray-900 line-clamp-2">
                 {recording.question?.text || 'No question text'}
               </p>

@@ -6,7 +6,7 @@ import { EmptyState } from '../components/library/EmptyState';
 import { QuestionsTable } from '../components/library/QuestionsTable';
 import { RecordingsList } from '../components/library/RecordingsList';
 import { LoadingSpinner } from '../components/ui';
-import { FileQuestion, BookOpen, Video } from 'lucide-react';
+import { MessageCircleQuestion, BookOpen, Video } from 'lucide-react';
 import { GET_QUESTIONS, GET_ALL_RECORDINGS } from '../graphql/queries';
 
 type TabType = 'questions' | 'stories' | 'recordings';
@@ -23,7 +23,7 @@ const TABS: TabConfig[] = [
   {
     id: 'questions',
     label: 'Questions',
-    icon: FileQuestion,
+    icon: MessageCircleQuestion,
     emptyTitle: 'No questions yet',
     emptyDescription: 'Start by generating questions or creating custom ones in the Practice section.'
   },

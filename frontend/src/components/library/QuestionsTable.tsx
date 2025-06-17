@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { GET_QUESTIONS, GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question } from '../../types';
-import { Edit3, Trash2, FileQuestion, ChevronUp, ChevronDown, AlertCircle, X } from 'lucide-react';
+import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -508,7 +508,7 @@ export const QuestionsTable = () => {
 
         {filteredAndSortedQuestions.length === 0 && (
           <div className="text-center py-12">
-            <FileQuestion className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">No questions found</p>
           </div>
         )}
