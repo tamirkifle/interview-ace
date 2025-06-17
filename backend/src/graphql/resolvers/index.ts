@@ -176,6 +176,25 @@ export const resolvers = {
         commonality: 5, // Default commonality for custom questions
         source: 'custom' // Track that this was user-created
       });
+    },
+    updateQuestion: async (_: any, { id, text }: { id: string; text: string }) => {
+      if (!text || text.trim().length < 20) {
+        throw new GraphQLError('Question must be at least 20 characters long', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      return questionService.updateQuestion(id, text.trim());
+    },
+    
+    deleteQuestions: async (_: any, { ids }: { ids: string[] }) => {
+      if (!ids || ids.length === 0) {
+        throw new GraphQLError('No question IDs provided', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      return questionService.deleteQuestions(ids);
     }
   },
 

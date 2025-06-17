@@ -43,6 +43,8 @@ export interface Question {
   updatedAt: string;
   categories: Category[];
   traits: Trait[];
+  recordings?: Recording[];
+  source?: string;  
 } 
 
 export interface StoryMatch {

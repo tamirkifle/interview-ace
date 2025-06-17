@@ -159,5 +159,7 @@ export const typeDefs = gql`
     createRecording(input: CreateRecordingInput!): Recording!
     deleteRecording(id: ID!): Boolean!
     createCustomQuestion(input: CreateCustomQuestionInput!): Question!
+    updateQuestion(id: ID!, text: String!): Question!
+    deleteQuestions(ids: [ID!]!): Int!
   }
 `;

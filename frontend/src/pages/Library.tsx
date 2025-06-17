@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@apollo/client';
 import { LibraryHeader } from '../components/library/LibraryHeader';
 import { TabNavigation } from '../components/library/TabNavigation';
 import { EmptyState } from '../components/library/EmptyState';
+import { QuestionsTable } from '../components/library/QuestionsTable';
 import { LoadingSpinner } from '../components/ui';
 import { FileQuestion, BookOpen, Video } from 'lucide-react';
+import { GET_QUESTIONS } from '../graphql/queries';
 
 type TabType = 'questions' | 'stories' | 'recordings';
 
@@ -41,26 +44,28 @@ const TABS: TabConfig[] = [
 
 export const Library = () => {
   const [activeTab, setActiveTab] = useState<TabType>('questions');
-  const [isLoading] = useState(false);
+  
+  // Fetch questions data to determine if we have any
+  const { data: questionsData, loading: questionsLoading } = useQuery(GET_QUESTIONS);
+  const hasQuestions = (questionsData?.questions?.length || 0) > 0;
 
-  // Placeholder data states - will be replaced with real data in future commits
-  const [hasQuestions] = useState(false);
+  // Placeholder data states for other tabs
   const [hasStories] = useState(false);
   const [hasRecordings] = useState(false);
 
   const activeTabConfig = TABS.find(tab => tab.id === activeTab)!;
 
   const renderTabContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="lg" />
-        </div>
-      );
-    }
-
     switch (activeTab) {
       case 'questions':
+        if (questionsLoading) {
+          return (
+            <div className="flex justify-center items-center h-64">
+              <LoadingSpinner size="lg" />
+            </div>
+          );
+        }
+        
         if (!hasQuestions) {
           return (
             <EmptyState
@@ -72,34 +77,8 @@ export const Library = () => {
             />
           );
         }
-        return (
-          <div className="space-y-4">
-            {/* Search and filter section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <input
-                  type="text"
-                  placeholder="Search questions..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <select className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option value="">All Categories</option>
-                </select>
-                <select className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option value="">All Sources</option>
-                  <option value="seeded">Seeded</option>
-                  <option value="generated">Generated</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-            </div>
-            
-            {/* Questions list placeholder */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-500 text-center">Questions list will be implemented in the next commit</p>
-            </div>
-          </div>
-        );
+        
+        return <QuestionsTable />;
 
       case 'stories':
         if (!hasStories) {

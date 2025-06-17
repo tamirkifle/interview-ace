@@ -47,3 +47,30 @@ export const CREATE_CUSTOM_QUESTION = gql`
     }
   }
 `;
+
+export const UPDATE_QUESTION = gql`
+  mutation UpdateQuestion($id: ID!, $text: String!) {
+    updateQuestion(id: $id, text: $text) {
+      id
+      text
+      difficulty
+      commonality
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const DELETE_QUESTIONS = gql`
+  mutation DeleteQuestions($ids: [ID!]!) {
+    deleteQuestions(ids: $ids)
+  }
+`;

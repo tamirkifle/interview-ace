@@ -166,4 +166,46 @@ export class QuestionService {
       await session.close();
     }
   }
+
+  async updateQuestion(id: string, text: string): Promise<Question> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(
+        `
+        MATCH (q:Question {id: $id})
+        SET q.text = $text,
+            q.updatedAt = datetime()
+        RETURN q
+        `,
+        { id, text }
+      );
+  
+      if (result.records.length === 0) {
+        throw new Error('Question not found');
+      }
+  
+      return result.records[0].get('q').properties;
+    } finally {
+      await session.close();
+    }
+  }
+  
+  async deleteQuestions(ids: string[]): Promise<number> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(
+        `
+        MATCH (q:Question)
+        WHERE q.id IN $ids
+        DETACH DELETE q
+        RETURN count(q) as deletedCount
+        `,
+        { ids }
+      );
+  
+      return result.records[0].get('deletedCount').toNumber();
+    } finally {
+      await session.close();
+    }
+  }
 } 
