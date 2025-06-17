@@ -5,6 +5,7 @@ import {
   BarChart,
   Settings,
   type LucideIcon,
+  Library,
 } from 'lucide-react';
 
 export const navigationIcons: Record<string, LucideIcon> = {
@@ -13,6 +14,7 @@ export const navigationIcons: Record<string, LucideIcon> = {
   Practice: Mic,
   Analytics: BarChart,
   Settings: Settings,
+  Library: Library,
 };
 
 export const getIcon = (name: string): LucideIcon => {

@@ -6,9 +6,11 @@ import { CreateStory } from './pages/CreateStory';
 import { Practice } from './pages/Practice';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { Library } from './pages/Library';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-function App() {
+
+function App() {  
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
@@ -23,6 +25,7 @@ function App() {
             <Route path="stories" element={<Stories />} />
             <Route path="stories/new" element={<CreateStory />} />
             <Route path="practice" element={<Practice />} />
+            <Route path="library" element={<Library />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
           </Route>
