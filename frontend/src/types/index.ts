@@ -16,7 +16,20 @@ export interface Recording {
   filename: string;
   duration: number;
   minio_key: string;
-  createdAt: string;
+  createdAt: string | Date;
+  question?: Question;
+  story?: Story;
+  transcript?: string;
+  transcriptStatus?: TranscriptionStatus;
+  transcriptedAt?: string | Date;
+}
+
+export enum TranscriptionStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
 }
 
 export interface Story {

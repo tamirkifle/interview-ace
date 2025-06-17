@@ -124,6 +124,19 @@ export const resolvers = {
     recordingTranscriptionStatus: async (_: any, { id }: { id: string }) => {
       return recordingService.getRecordingTranscriptionStatus(id);
     },
+
+    recordings: async (_: any, { where, orderBy }: { where?: any; orderBy?: string }) => {
+      const filters: any = {};
+      
+      if (where) {
+        if (where.createdAt_gte) filters.startDate = new Date(where.createdAt_gte);
+        if (where.createdAt_lte) filters.endDate = new Date(where.createdAt_lte);
+        if (where.questionId) filters.questionId = where.questionId;
+        if (where.storyId) filters.storyId = where.storyId;
+      }
+      
+      return recordingService.getAllRecordings(filters);
+    }
   },
 
   Mutation: {
@@ -196,7 +209,7 @@ export const resolvers = {
       
       return questionService.deleteQuestions(ids);
     },
-    
+
     updateQuestionFull: async (_: any, { id, input }: { id: string; input: any }) => {
       const { text, difficulty, categoryIds, traitIds } = input;
       

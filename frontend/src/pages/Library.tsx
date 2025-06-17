@@ -4,9 +4,10 @@ import { LibraryHeader } from '../components/library/LibraryHeader';
 import { TabNavigation } from '../components/library/TabNavigation';
 import { EmptyState } from '../components/library/EmptyState';
 import { QuestionsTable } from '../components/library/QuestionsTable';
+import { RecordingsList } from '../components/library/RecordingsList';
 import { LoadingSpinner } from '../components/ui';
 import { FileQuestion, BookOpen, Video } from 'lucide-react';
-import { GET_QUESTIONS } from '../graphql/queries';
+import { GET_QUESTIONS, GET_ALL_RECORDINGS } from '../graphql/queries';
 
 type TabType = 'questions' | 'stories' | 'recordings';
 
@@ -49,9 +50,12 @@ export const Library = () => {
   const { data: questionsData, loading: questionsLoading } = useQuery(GET_QUESTIONS);
   const hasQuestions = (questionsData?.questions?.length || 0) > 0;
 
+  // Fetch recordings data
+  const { data: recordingsData, loading: recordingsLoading } = useQuery(GET_ALL_RECORDINGS);
+  const hasRecordings = (recordingsData?.recordings?.length || 0) > 0;
+
   // Placeholder data states for other tabs
   const [hasStories] = useState(false);
-  const [hasRecordings] = useState(false);
 
   const activeTabConfig = TABS.find(tab => tab.id === activeTab)!;
 
@@ -113,6 +117,14 @@ export const Library = () => {
         );
 
       case 'recordings':
+        if (recordingsLoading) {
+          return (
+            <div className="flex justify-center items-center h-64">
+              <LoadingSpinner size="lg" />
+            </div>
+          );
+        }
+        
         if (!hasRecordings) {
           return (
             <EmptyState
@@ -124,32 +136,8 @@ export const Library = () => {
             />
           );
         }
-        return (
-          <div className="space-y-4">
-            {/* View toggle and filters */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex gap-2">
-                  <button className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg">
-                    By Date
-                  </button>
-                  <button className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
-                    By Question
-                  </button>
-                </div>
-                <input
-                  type="date"
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-            
-            {/* Recordings list placeholder */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-500 text-center">Recordings list will be implemented in a future commit</p>
-            </div>
-          </div>
-        );
+        
+        return <RecordingsList />;
 
       default:
         return null;

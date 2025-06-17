@@ -176,3 +176,69 @@ export const VALIDATE_LLM_KEY = gql`
     validateLLMKey
   }
 `;
+
+export const GET_RECORDINGS_GROUPED_BY_QUESTION = gql`
+  query GetRecordingsGroupedByQuestion {
+    questions {
+      id
+      text
+      recordings {
+        id
+        createdAt
+        duration
+        minio_key
+        filename
+        story {
+          id
+          title
+        }
+      }
+    }
+  }
+`;
+
+export const GET_RECORDINGS_BY_DATE = gql`
+  query GetRecordingsByDate($startDate: DateTime, $endDate: DateTime) {
+    recordings(
+      where: { 
+        createdAt_gte: $startDate, 
+        createdAt_lte: $endDate 
+      }
+      orderBy: createdAt_DESC
+    ) {
+      id
+      createdAt
+      duration
+      minio_key
+      filename
+      question {
+        id
+        text
+      }
+      story {
+        id
+        title
+      }
+    }
+  }
+`;
+
+export const GET_ALL_RECORDINGS = gql`
+  query GetAllRecordings {
+    recordings {
+      id
+      createdAt
+      duration
+      minio_key
+      filename
+      question {
+        id
+        text
+      }
+      story {
+        id
+        title
+      }
+    }
+  }
+`;

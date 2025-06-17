@@ -112,6 +112,10 @@ export const typeDefs = gql`
     questions: [Question!]!
     question(id: ID!): Question
     recording(id: ID!): Recording
+    recordings(
+    where: RecordingWhereInput
+    orderBy: RecordingOrderBy
+  ): [Recording!]!
     recordingsByQuestion(questionId: ID!): [Recording!]!
 
     # Question Generation
@@ -160,6 +164,18 @@ export const typeDefs = gql`
     categoryIds: [ID!]!
     traitIds: [ID!]!
   }
+    
+  input RecordingWhereInput {
+    createdAt_gte: DateTime
+    createdAt_lte: DateTime
+    questionId: ID
+    storyId: ID
+  }
+
+  enum RecordingOrderBy {
+    createdAt_ASC
+    createdAt_DESC
+  }
 
   type Mutation {
     createStory(input: CreateStoryInput!): Story!
@@ -170,4 +186,6 @@ export const typeDefs = gql`
     deleteQuestions(ids: [ID!]!): Int!
     updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!
   }
+
+  
 `;

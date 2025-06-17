@@ -207,4 +207,57 @@ export class RecordingService {
       await session.close();
     }
   }
+
+  async getAllRecordings(filters?: {
+    startDate?: Date;
+    endDate?: Date;
+    questionId?: string;
+    storyId?: string;
+  }): Promise<Recording[]> {
+    const session = await neo4jConnection.getSession();
+    try {
+      let whereClause = '';
+      const params: any = {};
+  
+      if (filters) {
+        const conditions: string[] = [];
+        
+        if (filters.startDate) {
+          conditions.push('r.createdAt >= $startDate');
+          params.startDate = filters.startDate.toISOString();
+        }
+        
+        if (filters.endDate) {
+          conditions.push('r.createdAt <= $endDate');
+          params.endDate = filters.endDate.toISOString();
+        }
+        
+        if (filters.questionId) {
+          conditions.push('q.id = $questionId');
+          params.questionId = filters.questionId;
+        }
+        
+        if (filters.storyId) {
+          conditions.push('s.id = $storyId');
+          params.storyId = filters.storyId;
+        }
+        
+        if (conditions.length > 0) {
+          whereClause = 'WHERE ' + conditions.join(' AND ');
+        }
+      }
+  
+      const result = await session.run(`
+        MATCH (r:Recording)-[:ANSWERS]->(q:Question)
+        OPTIONAL MATCH (r)-[:RECORDS]->(s:Story)
+        ${whereClause}
+        RETURN r
+        ORDER BY r.createdAt DESC
+      `, params);
+      
+      return result.records.map((record: Record) => record.get('r').properties);
+    } finally {
+      await session.close();
+    }
+  }
 }
