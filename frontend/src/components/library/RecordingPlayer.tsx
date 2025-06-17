@@ -5,24 +5,28 @@ import {
   ChevronRight, 
   Calendar, 
   Clock, 
-  MessageCircleQuestion, 
+  FileQuestion, 
   BookOpen,
   X
 } from 'lucide-react';
 import { Recording } from '../../types';
+import { TranscriptSection } from '../recording/TranscriptSection';
+import { Link } from 'react-router-dom';
 
 interface RecordingPlayerProps {
   recordings: Recording[];
   currentIndex: number;
   onNavigate: (index: number) => void;
   onClose: () => void;
+  searchTerm?: string;
 }
 
 export const RecordingPlayer = ({
   recordings,
   currentIndex,
   onNavigate,
-  onClose
+  onClose,
+  searchTerm
 }: RecordingPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,8 +115,8 @@ export const RecordingPlayer = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-4xl w-full my-8 overflow-hidden flex flex-col max-h-[calc(100vh-4rem)]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -167,7 +171,7 @@ export const RecordingPlayer = ({
 
           <div className="space-y-2">
             <div className="flex items-start space-x-2">
-              <MessageCircleQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
+              <FileQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
               <p className="text-sm text-gray-900">
                 {currentRecording.question?.text || 'No question text'}
               </p>
@@ -182,6 +186,14 @@ export const RecordingPlayer = ({
               </div>
             )}
           </div>
+
+          {/* Transcript Section */}
+          <TranscriptSection 
+            transcript={currentRecording.transcript}
+            transcriptStatus={currentRecording.transcriptStatus}
+            searchTerm={searchTerm}
+            recordingId={currentRecording.id}
+          />
         </div>
 
         {/* Navigation */}

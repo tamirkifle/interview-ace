@@ -185,6 +185,7 @@ export const typeDefs = gql`
     updateQuestion(id: ID!, text: String!): Question!
     deleteQuestions(ids: [ID!]!): Int!
     updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!
+    retryTranscription(id: ID!): Recording!
   }
 
   

@@ -95,3 +95,14 @@ export const UPDATE_QUESTION_FULL = gql`
     }
   }
 `;
+
+export const RETRY_TRANSCRIPTION = gql`
+  mutation RetryTranscription($id: ID!) {
+    retryTranscription(id: $id) {
+      id
+      transcriptStatus
+      transcript
+      transcriptedAt
+    }
+  }
+`;

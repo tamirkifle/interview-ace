@@ -260,4 +260,62 @@ export class RecordingService {
       await session.close();
     }
   }
+
+  async retryTranscription(
+    recordingId: string, 
+    transcriptionContext: TranscriptionContext
+  ): Promise<Recording> {
+    const session = await neo4jConnection.getSession();
+    try {
+      // First, get the recording to ensure it exists and get the minio_key
+      const recordingResult = await session.run(`
+        MATCH (r:Recording {id: $recordingId})
+        RETURN r
+      `, { recordingId });
+      
+      if (recordingResult.records.length === 0) {
+        throw new Error('Recording not found');
+      }
+      
+      const recording = recordingResult.records[0].get('r').properties;
+      
+      // Allow retranscription of any recording
+      // For PENDING/PROCESSING, check if it's been stuck for too long (> 5 minutes)
+      if (recording.transcriptStatus === 'PENDING' || recording.transcriptStatus === 'PROCESSING') {
+        // Allow force retry - the user explicitly wants to restart
+        console.log(`Force retrying transcription for recording ${recordingId} with status ${recording.transcriptStatus}`);
+      }
+      
+      // Update status to PENDING
+      const updateResult = await session.run(`
+        MATCH (r:Recording {id: $recordingId})
+        SET r.transcriptStatus = 'PENDING',
+            r.transcript = null,
+            r.transcriptedAt = null
+        RETURN r
+      `, { recordingId });
+      
+      const updatedRecording = updateResult.records[0].get('r').properties;
+      
+      // Queue transcription job
+      if (transcriptionContext?.provider && (transcriptionContext?.apiKey || transcriptionContext.provider === 'local')) {
+        transcriptionJobProcessor.processRecording(
+          recordingId,
+          recording.minio_key,
+          transcriptionContext
+        ).catch(error => {
+          console.error('Failed to process transcription retry:', error);
+        });
+      } else {
+        throw new Error('No transcription context provided');
+      }
+      
+      return updatedRecording;
+    } catch (error) {
+      console.error('Error retrying transcription:', error);
+      throw error;
+    } finally {
+      await session.close();
+    }
+  }
 }

@@ -239,6 +239,16 @@ export const resolvers = {
         categoryIds,
         traitIds
       });
+    },
+
+    retryTranscription: async (_: any, { id }: { id: string }, context: any) => {
+      if (!context.transcriptionContext) {
+        throw new GraphQLError('Transcription not configured', {
+          extensions: { code: 'TRANSCRIPTION_NOT_CONFIGURED' }
+        });
+      }
+      
+      return recordingService.retryTranscription(id, context.transcriptionContext);
     }
   },
 

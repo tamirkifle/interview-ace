@@ -188,6 +188,9 @@ export const GET_RECORDINGS_GROUPED_BY_QUESTION = gql`
         duration
         minio_key
         filename
+        transcript
+        transcriptStatus
+        transcriptedAt
         story {
           id
           title
@@ -211,6 +214,9 @@ export const GET_RECORDINGS_BY_DATE = gql`
       duration
       minio_key
       filename
+      transcript
+      transcriptStatus
+      transcriptedAt
       question {
         id
         text
@@ -231,6 +237,37 @@ export const GET_ALL_RECORDINGS = gql`
       duration
       minio_key
       filename
+      transcript
+      transcriptStatus
+      transcriptedAt
+      question {
+        id
+        text
+      }
+      story {
+        id
+        title
+      }
+    }
+  }
+`;
+
+export const SEARCH_RECORDINGS = gql`
+  query SearchRecordings($searchTerm: String) {
+    recordings(
+      where: { 
+        transcript_contains: $searchTerm 
+      }
+      orderBy: createdAt_DESC
+    ) {
+      id
+      createdAt
+      duration
+      minio_key
+      filename
+      transcript
+      transcriptStatus
+      transcriptedAt
       question {
         id
         text

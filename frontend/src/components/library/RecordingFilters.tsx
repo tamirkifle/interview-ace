@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Calendar, Filter } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAPIKeys } from '../../hooks/useAPIKeys';
 
 interface RecordingFiltersProps {
   questions: Array<{ id: string; text: string }>;
@@ -14,6 +15,8 @@ export interface RecordingFilterState {
   questionId: string | null;
   storyId: string | null;
   hasMultiple: boolean | null;
+  transcriptStatus: string | null;
+  searchTerm: string;
 }
 
 export const RecordingFilters = ({ 
@@ -21,12 +24,15 @@ export const RecordingFilters = ({
   stories, 
   onFilterChange 
 }: RecordingFiltersProps) => {
+  const { hasTranscriptionEnabled } = useAPIKeys();
   const [filters, setFilters] = useState<RecordingFilterState>({
     startDate: null,
     endDate: null,
     questionId: null,
     storyId: null,
-    hasMultiple: null
+    hasMultiple: null,
+    transcriptStatus: null,
+    searchTerm: ''
   });
 
   const handleFilterChange = (key: keyof RecordingFilterState, value: any) => {
@@ -41,7 +47,9 @@ export const RecordingFilters = ({
       endDate: null,
       questionId: null,
       storyId: null,
-      hasMultiple: null
+      hasMultiple: null,
+      transcriptStatus: null,
+      searchTerm: ''
     };
     setFilters(clearedFilters);
     onFilterChange(clearedFilters);
@@ -66,7 +74,26 @@ export const RecordingFilters = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Transcript Search - Only show if transcription is enabled */}
+      {hasTranscriptionEnabled && (
+        <div className="mt-4 space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Search in Transcripts
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={filters.searchTerm}
+              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+              placeholder="Search transcript content..."
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
         {/* Date Range */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
@@ -144,6 +171,25 @@ export const RecordingFilters = ({
             <option value="false">Questions with Single Recording</option>
           </select>
         </div>
+
+        {/* Transcription Status Filter - Only show if transcription is enabled */}
+        {hasTranscriptionEnabled && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Transcription Status
+            </label>
+            <select
+              value={filters.transcriptStatus || ''}
+              onChange={(e) => handleFilterChange('transcriptStatus', e.target.value || null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">All</option>
+              <option value="COMPLETED">With Transcript</option>
+              <option value="NONE">Without Transcript</option>
+              <option value="FAILED">Failed Transcription</option>
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );

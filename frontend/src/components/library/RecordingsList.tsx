@@ -4,26 +4,27 @@ import { Link } from 'react-router-dom';
 import { 
   Film, 
   Calendar, 
-  MessageCircleQuestion, 
   LayoutList, 
   Clock,
   Download,
   Trash2,
-  AlertCircle,
-  BookOpen
+  BookOpen,
+  FileText,
+  RefreshCw
 } from 'lucide-react';
 import { GET_ALL_RECORDINGS, GET_QUESTIONS, GET_STORIES } from '../../graphql/queries';
-import { DELETE_RECORDING } from '../../graphql/mutations';
+import { DELETE_RECORDING, RETRY_TRANSCRIPTION } from '../../graphql/mutations';
 import { LoadingSpinner, ErrorMessage } from '../ui';
 import { RecordingCard } from './RecordingCard';
-import { RecordingPlayer } from './RecordingPlayer';
 import { RecordingFilters, RecordingFilterState } from './RecordingFilters';
-import { Recording, Question } from '../../types';
+import { Recording, Question, TranscriptionStatus } from '../../types';
 import { parseISO, isWithinInterval, isValid } from 'date-fns';
+import { useAPIKeys } from '../../hooks/useAPIKeys';
 
 type ViewMode = 'timeline' | 'question';
 
 export const RecordingsList = () => {
+  const { hasTranscriptionEnabled } = useAPIKeys();
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem('recordingsViewMode') as ViewMode) || 'timeline';
   });
@@ -32,13 +33,11 @@ export const RecordingsList = () => {
     endDate: null,
     questionId: null,
     storyId: null,
-    hasMultiple: null
+    hasMultiple: null,
+    transcriptStatus: null,
+    searchTerm: ''
   });
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
-  const [playerState, setPlayerState] = useState<{
-    recordings: Recording[];
-    currentIndex: number;
-  } | null>(null);
 
   const { data: recordingsData, loading: recordingsLoading, error: recordingsError } = useQuery(GET_ALL_RECORDINGS);
   const { data: questionsData } = useQuery(GET_QUESTIONS);
@@ -46,6 +45,13 @@ export const RecordingsList = () => {
 
   const [deleteRecording] = useMutation(DELETE_RECORDING, {
     refetchQueries: [{ query: GET_ALL_RECORDINGS }]
+  });
+
+  const [retryTranscription, { loading: retrying }] = useMutation(RETRY_TRANSCRIPTION, {
+    refetchQueries: [{ query: GET_ALL_RECORDINGS }],
+    onError: (error) => {
+      console.error('Failed to retry transcription:', error);
+    }
   });
 
   const recordings = recordingsData?.recordings || [];
@@ -133,6 +139,19 @@ export const RecordingsList = () => {
       });
     }
 
+    // Transcript status filter
+    if (filters.transcriptStatus) {
+      filtered = filtered.filter((r: Recording) => r.transcriptStatus === filters.transcriptStatus);
+    }
+
+    // Transcript search
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter((r: Recording) => 
+        r.transcript && r.transcript.toLowerCase().includes(searchLower)
+      );
+    }
+
     // Sort by date (newest first)
     filtered.sort((a: Recording, b: Recording) => {
       return parseRecordingDate(b.createdAt).getTime() - parseRecordingDate(a.createdAt).getTime();
@@ -159,31 +178,6 @@ export const RecordingsList = () => {
 
     return grouped;
   }, [filteredRecordings]);
-
-  const handlePlayRecording = (recordingId: string) => {
-    if (viewMode === 'timeline') {
-      // In timeline view, play single recording
-      const recordingIndex = filteredRecordings.findIndex(r => r.id === recordingId);
-      if (recordingIndex !== -1) {
-        setPlayerState({
-          recordings: [filteredRecordings[recordingIndex]],
-          currentIndex: 0
-        });
-      }
-    } else {
-      // In question view, play all recordings for that question
-      const recording = filteredRecordings.find((r: Recording) => r.id === recordingId);
-      if (recording && recording.question) {
-        const questionRecordings = recordingsByQuestion[recording.question.id] || [];
-        const index = questionRecordings.findIndex(r => r.id === recordingId);
-        setPlayerState({
-          recordings: questionRecordings,
-          currentIndex: index !== -1 ? index : 0
-        });
-      }
-    }
-    setPlayingRecordingId(recordingId);
-  };
 
   const handleDeleteRecording = async (recordingId: string) => {
     if (!confirm('Are you sure you want to delete this recording?')) return;
@@ -277,7 +271,7 @@ export const RecordingsList = () => {
                 key={recording.id}
                 recording={recording}
                 isPlaying={playingRecordingId === recording.id}
-                onPlayPause={() => handlePlayRecording(recording.id)}
+                onPlayPause={() => setPlayingRecordingId(playingRecordingId === recording.id ? null : recording.id)}
                 onDelete={() => handleDeleteRecording(recording.id)}
                 onDownload={() => handleDownloadRecording(recording)}
               />
@@ -306,7 +300,10 @@ export const RecordingsList = () => {
                   <div className="divide-y divide-gray-200">
                     {questionRecordings.map((recording: Recording, index: number) => (
                       <div key={recording.id} className="p-4 hover:bg-gray-50">
-                        <div className="flex items-center justify-between">
+                        <Link 
+                          to={`/recordings/${recording.id}`}
+                          className="flex items-center justify-between group"
+                        >
                           <div className="flex items-center space-x-4">
                             <span className="text-sm font-medium text-gray-500">
                               Recording {questionRecordings.length - index} of {questionRecordings.length}
@@ -316,37 +313,69 @@ export const RecordingsList = () => {
                               <span>{Math.floor(recording.duration / 60)}:{(recording.duration % 60).toString().padStart(2, '0')}</span>
                             </div>
                             {recording.story && (
-                              <Link 
-                                to={`/library/stories/${recording.story.id}/edit`}
-                                className="flex items-center space-x-1 text-sm text-gray-500 hover:text-primary-600"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
                                 <BookOpen className="w-4 h-4" />
                                 <span>{recording.story.title}</span>
-                              </Link>
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handlePlayRecording(recording.id)}
+                            {(recording.transcriptStatus === TranscriptionStatus.FAILED || 
+                              (recording.transcriptStatus === TranscriptionStatus.NONE && hasTranscriptionEnabled)) && (
+                              <button
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  try {
+                                    await retryTranscription({ variables: { id: recording.id } });
+                                  } catch (error) {
+                                    // Error handled by onError
+                                  }
+                                }}
+                                disabled={retrying}
+                                className={`p-1.5 ${
+                                  recording.transcriptStatus === TranscriptionStatus.FAILED 
+                                    ? 'text-orange-600 hover:bg-orange-50' 
+                                    : 'text-primary-600 hover:bg-primary-50'
+                                } rounded transition-colors`}
+                                title={recording.transcriptStatus === TranscriptionStatus.FAILED ? "Retry transcription" : "Transcribe recording"}
+                              >
+                                {recording.transcriptStatus === TranscriptionStatus.FAILED ? (
+                                  <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+                                ) : (
+                                  <FileText className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+                                )}
+                              </button>
+                            )}
+                            <Link
+                              to={`/recordings/${recording.id}`}
                               className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Film className="w-4 h-4" />
-                            </button>
+                            </Link>
                             <button
-                              onClick={() => handleDownloadRecording(recording)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDownloadRecording(recording);
+                              }}
                               className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
                             >
                               <Download className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteRecording(recording.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteRecording(recording.id);
+                              }}
                               className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </div>
+                        </Link>
                       </div>
                     ))}
                   </div>
@@ -355,22 +384,6 @@ export const RecordingsList = () => {
             })
           )}
         </div>
-      )}
-
-      {/* Recording Player Modal */}
-      {playerState && (
-        <RecordingPlayer
-          recordings={playerState.recordings}
-          currentIndex={playerState.currentIndex}
-          onNavigate={(index) => {
-            setPlayerState({ ...playerState, currentIndex: index });
-            setPlayingRecordingId(playerState.recordings[index].id);
-          }}
-          onClose={() => {
-            setPlayerState(null);
-            setPlayingRecordingId(null);
-          }}
-        />
       )}
     </div>
   );

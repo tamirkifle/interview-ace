@@ -99,11 +99,17 @@ export const useAPIKeys = () => {
     };
   }, [apiKeys]);
 
+  // Convenience methods
+  const hasLLMEnabled = apiKeys?.llm?.enabled || false;
+  const hasTranscriptionEnabled = apiKeys?.transcription?.enabled || false;
+
   return {
     apiKeys,
     isLoading,
     saveAPIKeys,
     clearAPIKeys,
-    getAPIKeyStatus
+    getAPIKeyStatus,
+    hasLLMEnabled,
+    hasTranscriptionEnabled
   };
 };
