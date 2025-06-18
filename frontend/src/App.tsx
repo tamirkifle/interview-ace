@@ -9,7 +9,6 @@ import { Settings } from './pages/Settings';
 import { Library } from './pages/Library';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EditQuestion } from './pages/EditQuestion';
-import { RecordingView } from './pages/RecordingView';
 
 
 function App() {  
@@ -32,8 +31,6 @@ function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          {/* Recording view is outside the main layout for full-width video */}
-          <Route path="recordings/:id" element={<RecordingView />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

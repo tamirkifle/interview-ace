@@ -16,6 +16,7 @@ import { GET_ALL_RECORDINGS, GET_QUESTIONS, GET_STORIES } from '../../graphql/qu
 import { DELETE_RECORDING, RETRY_TRANSCRIPTION } from '../../graphql/mutations';
 import { LoadingSpinner, ErrorMessage } from '../ui';
 import { RecordingCard } from './RecordingCard';
+import { RecordingPlayer } from './RecordingPlayer';
 import { RecordingFilters, RecordingFilterState } from './RecordingFilters';
 import { Recording, Question, TranscriptionStatus } from '../../types';
 import { parseISO, isWithinInterval, isValid } from 'date-fns';
@@ -38,6 +39,10 @@ export const RecordingsList = () => {
     searchTerm: ''
   });
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
+  const [playerState, setPlayerState] = useState<{
+    recordings: Recording[];
+    currentIndex: number;
+  } | null>(null);
 
   const { data: recordingsData, loading: recordingsLoading, error: recordingsError } = useQuery(GET_ALL_RECORDINGS);
   const { data: questionsData } = useQuery(GET_QUESTIONS);
@@ -179,6 +184,31 @@ export const RecordingsList = () => {
     return grouped;
   }, [filteredRecordings]);
 
+  const handlePlayRecording = (recordingId: string) => {
+    if (viewMode === 'timeline') {
+      // In timeline view, play single recording
+      const recordingIndex = filteredRecordings.findIndex(r => r.id === recordingId);
+      if (recordingIndex !== -1) {
+        setPlayerState({
+          recordings: [filteredRecordings[recordingIndex]],
+          currentIndex: 0
+        });
+      }
+    } else {
+      // In question view, play all recordings for that question
+      const recording = filteredRecordings.find((r: Recording) => r.id === recordingId);
+      if (recording && recording.question) {
+        const questionRecordings = recordingsByQuestion[recording.question.id] || [];
+        const index = questionRecordings.findIndex(r => r.id === recordingId);
+        setPlayerState({
+          recordings: questionRecordings,
+          currentIndex: index !== -1 ? index : 0
+        });
+      }
+    }
+    setPlayingRecordingId(recordingId);
+  };
+
   const handleDeleteRecording = async (recordingId: string) => {
     if (!confirm('Are you sure you want to delete this recording?')) return;
 
@@ -271,7 +301,7 @@ export const RecordingsList = () => {
                 key={recording.id}
                 recording={recording}
                 isPlaying={playingRecordingId === recording.id}
-                onPlayPause={() => setPlayingRecordingId(playingRecordingId === recording.id ? null : recording.id)}
+                onPlayPause={() => handlePlayRecording(recording.id)}
                 onDelete={() => handleDeleteRecording(recording.id)}
                 onDownload={() => handleDownloadRecording(recording)}
               />
@@ -300,10 +330,7 @@ export const RecordingsList = () => {
                   <div className="divide-y divide-gray-200">
                     {questionRecordings.map((recording: Recording, index: number) => (
                       <div key={recording.id} className="p-4 hover:bg-gray-50">
-                        <Link 
-                          to={`/recordings/${recording.id}`}
-                          className="flex items-center justify-between group"
-                        >
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             <span className="text-sm font-medium text-gray-500">
                               Recording {questionRecordings.length - index} of {questionRecordings.length}
@@ -313,14 +340,18 @@ export const RecordingsList = () => {
                               <span>{Math.floor(recording.duration / 60)}:{(recording.duration % 60).toString().padStart(2, '0')}</span>
                             </div>
                             {recording.story && (
-                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                              <Link 
+                                to={`/library/stories/${recording.story.id}/edit`}
+                                className="flex items-center space-x-1 text-sm text-gray-500 hover:text-primary-600"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <BookOpen className="w-4 h-4" />
                                 <span>{recording.story.title}</span>
-                              </div>
+                              </Link>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
-                            {(recording.transcriptStatus === TranscriptionStatus.FAILED || 
+                          {(!recording.transcriptStatus || recording.transcriptStatus === TranscriptionStatus.FAILED || 
                               (recording.transcriptStatus === TranscriptionStatus.NONE && hasTranscriptionEnabled)) && (
                               <button
                                 onClick={async (e) => {
@@ -347,35 +378,26 @@ export const RecordingsList = () => {
                                 )}
                               </button>
                             )}
-                            <Link
-                              to={`/recordings/${recording.id}`}
+                            <button
+                              onClick={() => handlePlayRecording(recording.id)}
                               className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                              onClick={(e) => e.stopPropagation()}
                             >
                               <Film className="w-4 h-4" />
-                            </Link>
+                            </button>
                             <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDownloadRecording(recording);
-                              }}
+                              onClick={() => handleDownloadRecording(recording)}
                               className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
                             >
                               <Download className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDeleteRecording(recording.id);
-                              }}
+                              onClick={() => handleDeleteRecording(recording.id)}
                               className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </Link>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -384,6 +406,23 @@ export const RecordingsList = () => {
             })
           )}
         </div>
+      )}
+
+      {/* Recording Player Modal */}
+      {playerState && (
+        <RecordingPlayer
+          recordings={playerState.recordings}
+          currentIndex={playerState.currentIndex}
+          searchTerm={filters.searchTerm}
+          onNavigate={(index) => {
+            setPlayerState({ ...playerState, currentIndex: index });
+            setPlayingRecordingId(playerState.recordings[index].id);
+          }}
+          onClose={() => {
+            setPlayerState(null);
+            setPlayingRecordingId(null);
+          }}
+        />
       )}
     </div>
   );

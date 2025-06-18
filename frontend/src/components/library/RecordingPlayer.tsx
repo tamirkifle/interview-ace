@@ -5,13 +5,12 @@ import {
   ChevronRight, 
   Calendar, 
   Clock, 
-  FileQuestion, 
+  MessageCircleQuestion, 
   BookOpen,
   X
 } from 'lucide-react';
 import { Recording } from '../../types';
 import { TranscriptSection } from '../recording/TranscriptSection';
-import { Link } from 'react-router-dom';
 
 interface RecordingPlayerProps {
   recordings: Recording[];
@@ -115,8 +114,8 @@ export const RecordingPlayer = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-4xl w-full my-8 overflow-hidden flex flex-col max-h-[calc(100vh-4rem)]">
+    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col overflow-y-scroll">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -171,7 +170,7 @@ export const RecordingPlayer = ({
 
           <div className="space-y-2">
             <div className="flex items-start space-x-2">
-              <FileQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
+              <MessageCircleQuestion className="w-4 h-4 text-gray-400 mt-0.5" />
               <p className="text-sm text-gray-900">
                 {currentRecording.question?.text || 'No question text'}
               </p>
