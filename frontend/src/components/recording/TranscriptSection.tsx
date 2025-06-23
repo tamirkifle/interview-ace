@@ -101,7 +101,7 @@ export const TranscriptSection = ({
 
       {isExpanded && (
         <div className="mt-4 space-y-3">
-          {transcriptStatus === TranscriptionStatus.NONE && (
+          {(!transcriptStatus || transcriptStatus === TranscriptionStatus.NONE) && (
             <div className="space-y-3">
               {hasTranscriptionEnabled ? (
                 <>
