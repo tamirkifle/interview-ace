@@ -436,7 +436,7 @@ export const QuestionsTable = () => {
                       {question.traits.map((trait: any) => (
                         <Badge
                           key={trait.id}
-                          variant="outline"
+                          variant="square"
                           size="xs"
                           className="w-max"
                         >

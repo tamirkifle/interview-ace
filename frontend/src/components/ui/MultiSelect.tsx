@@ -84,7 +84,7 @@ export const MultiSelect = ({
           {selectedItems.map((item) => (
             <Badge
               key={item.id}
-              variant={isCategory(item) ? "colored" : "outline"}
+              variant={isCategory(item) ? "colored" : "square"}
               color={isCategory(item) ? item.color : undefined}
               size="sm"
               className="flex items-center gap-1"

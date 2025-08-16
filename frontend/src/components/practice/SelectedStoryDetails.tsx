@@ -99,7 +99,7 @@ export const SelectedStoryDetails = ({ storyId }: SelectedStoryDetailsProps) => 
                 {story.traits.map((trait: any) => (
                   <Badge
                     key={trait.id}
-                    variant="outline"
+                    variant="square"
                     size="xs"
                   >
                     {trait.name}

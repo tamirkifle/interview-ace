@@ -68,7 +68,7 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
             {story.traits.slice(0, 4).map((trait) => (
             <Badge
                 key={trait.id}
-                variant="outline"
+                variant="square"
                 size="xs"
                 className="flex items-center gap-1"
             >
@@ -77,7 +77,7 @@ export const StoryCard = ({ story, onClick }: StoryCardProps) => {
             </Badge>
             ))}
             {story.traits.length > 4 && (
-            <Badge variant="outline" size="xs" className="flex items-center gap-1">
+            <Badge variant="square" size="xs" className="flex items-center gap-1">
                 <Tag className="w-2.5 h-2.5" />
                 +{story.traits.length - 4} more
             </Badge>

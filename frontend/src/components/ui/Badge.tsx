@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'colored' | 'outline';
+  variant?: 'default' | 'colored' | 'outline' | 'square';
   size?: 'xs' | 'sm' | 'md';
   color?: string;
   className?: string;
@@ -19,6 +19,7 @@ const variantClasses = {
   default: 'bg-gray-100 text-gray-800',
   outline: 'border border-gray-300 text-gray-700 bg-white',
   colored: '', // Will be set dynamically
+  square: 'border border-gray-300 text-gray-700 bg-white rounded-0'
 };
 
 export const Badge = ({ 
@@ -37,6 +38,11 @@ export const Badge = ({
         backgroundColor: `${color}15`,
         color: color,
         border: `1px solid ${color}30`,
+      };
+    }
+    else if (variant === 'square') {
+      return {
+        borderRadius: 0,
       };
     }
     return undefined;

@@ -154,7 +154,7 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
             {matchedTraitsList.map((trait: any) => (
               <Badge
                 key={trait.id}
-                variant="outline"
+                variant="square"
                 size="xs"
                 className="flex items-center gap-1 relative ring-2 ring-yellow-400 ring-opacity-60 shadow-lg border-yellow-400"
               >
@@ -170,7 +170,7 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
             {unmatchedTraits.slice(0, Math.max(0, 4 - matchedTraitsList.length)).map((trait: any) => (
               <Badge
                 key={trait.id}
-                variant="outline"
+                variant="square"
                 size="xs"
                 className="flex items-center gap-1"
               >
@@ -181,7 +181,7 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
             
             {/* Show +more if there are remaining traits */}
             {(matchedTraitsList.length + unmatchedTraits.length) > 4 && (
-              <Badge variant="outline" size="xs" className="flex items-center gap-1">
+              <Badge variant="square" size="xs" className="flex items-center gap-1">
                 <Tag className="w-2.5 h-2.5" />
                 +{((matchedTraitsList.length + unmatchedTraits.length) - 4)} more
               </Badge>

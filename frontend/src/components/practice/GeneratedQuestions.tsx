@@ -150,7 +150,7 @@ export const GeneratedQuestions = ({
                 {currentQuestion.suggestedTraits.map((trait) => (
                   <Badge
                     key={trait.id}
-                    variant="outline"
+                    variant="square"
                     size="sm"
                   >
                     {trait.name}
