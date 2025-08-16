@@ -23,52 +23,6 @@ const experienceService = new ExperienceService();
 const projectService = new ProjectService();
 const jobService = new JobService();
 
-// Helper function to convert category names to Category objects
-async function resolveSuggestedCategories(categoryNames: string[]): Promise<Category[]> {
-  const allCategories = await categoryService.getAllCategories();
-  return categoryNames
-    .map(name => {
-      // Try exact match first
-      let match = allCategories.find(cat => 
-        cat.name.toLowerCase() === name.toLowerCase()
-      );
-      
-      // If no exact match, try partial match
-      if (!match) {
-        match = allCategories.find(cat => 
-          cat.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(cat.name.toLowerCase())
-        );
-      }
-      
-      return match;
-    })
-    .filter((cat): cat is Category => cat !== null && cat !== undefined);
-}
-
-// Helper function to convert trait names to Trait objects
-async function resolveSuggestedTraits(traitNames: string[]): Promise<Trait[]> {
-  const allTraits = await traitService.getAllTraits();
-  return traitNames
-    .map(name => {
-      // Try exact match first
-      let match = allTraits.find(trait => 
-        trait.name.toLowerCase() === name.toLowerCase()
-      );
-      
-      // If no exact match, try partial match
-      if (!match) {
-        match = allTraits.find(trait => 
-          trait.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(trait.name.toLowerCase())
-        );
-      }
-      
-      return match;
-    })
-    .filter((trait): trait is Trait => trait !== null && trait !== undefined);
-}
-
 export const resolvers = {
   DateTime: dateTimeScalar,
   
@@ -419,8 +373,8 @@ export const resolvers = {
             console.log('suggestedCategories:', q.suggestedCategories);
             console.log('suggestedTraits:', q.suggestedTraits);
             
-            const resolvedCategories = await resolveSuggestedCategories(q.suggestedCategories || []);
-            const resolvedTraits = await resolveSuggestedTraits(q.suggestedTraits || []);
+            const resolvedCategories = await llmService.resolveCategoryNamesToObjects(q.suggestedCategories || []);
+            const resolvedTraits = await llmService.resolveTraitNamesToObjects(q.suggestedTraits || []);
             
             console.log('resolvedCategories:', resolvedCategories);
             console.log('resolvedTraits:', resolvedTraits);
@@ -447,13 +401,14 @@ export const resolvers = {
               await session.close();
             }
             
+            // Return the structure that matches GraphQL schema (with resolved objects)
             return {
               id: question.id,
               text: question.text,
               difficulty: question.difficulty,
               reasoning: q.reasoning,
-              suggestedCategories: resolvedCategories,
-              suggestedTraits: resolvedTraits
+              suggestedCategories: resolvedCategories, // Category objects
+              suggestedTraits: resolvedTraits // Trait objects
             };
           })
         );

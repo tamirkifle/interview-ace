@@ -19,8 +19,8 @@ export interface GenerateQuestionsRequest {
 export interface GeneratedQuestion {
     id?: string;
     text: string;
-    suggestedCategories: string[]; // <-- This will be an array of strings from the LLM
-    suggestedTraits: string[]; // <-- This will be an array of strings from the LLM
+    suggestedCategories: string[]; // Raw strings from LLM
+    suggestedTraits: string[]; // Raw strings from LLM
     difficulty: 'easy' | 'medium' | 'hard';
     reasoning?: string;
 }
@@ -28,14 +28,14 @@ export interface GeneratedQuestion {
 export interface ResolvedGeneratedQuestion {
   id?: string;
   text: string;
-  suggestedCategories: Category[]; // <-- The resolved category objects
-  suggestedTraits: Trait[]; // <-- The resolved trait objects
+  suggestedCategories: Category[]; // Resolved objects for GraphQL
+  suggestedTraits: Trait[]; // Resolved objects for GraphQL
   difficulty: 'easy' | 'medium' | 'hard';
   reasoning?: string;
 }
   
 export interface QuestionGenerationResult {
-    questions: ResolvedGeneratedQuestion[]; // <-- Update this to use the resolved type
+    questions: ResolvedGeneratedQuestion[];
     generationId: string;
     sourceType: 'categories' | 'job_description' | 'mixed' | 'resume';
     provider: string;

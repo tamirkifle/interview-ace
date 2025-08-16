@@ -24,9 +24,19 @@ const GENERATE_RESUME_QUESTIONS = gql`
   mutation GenerateResumeQuestions($input: GenerateResumeQuestionsInput!) {
     generateResumeQuestions(input: $input) {
       questions {
+        id
         text
         difficulty
         reasoning
+        suggestedCategories {
+          id
+          name
+          color
+        }
+        suggestedTraits {
+          id
+          name
+        }
       }
       generationId
       sourceType

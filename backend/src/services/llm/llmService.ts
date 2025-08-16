@@ -42,19 +42,49 @@ export class LLMService {
   }
 
   // Helper function to resolve category names to full Category objects
-  private async resolveCategoryNamesToObjects(names: string[]): Promise<Category[]> {
+  async resolveCategoryNamesToObjects(names: string[]): Promise<Category[]> {
     const allCategories = await categoryService.getAllCategories();
     return names
-      .map(name => allCategories.find(cat => cat.name.toLowerCase() === name.toLowerCase()))
-      .filter((cat): cat is Category => cat !== undefined);
+      .map(name => {
+        // Try exact match first
+        let match = allCategories.find(cat => 
+          cat.name.toLowerCase() === name.toLowerCase()
+        );
+        
+        // If no exact match, try partial match
+        if (!match) {
+          match = allCategories.find(cat => 
+            cat.name.toLowerCase().includes(name.toLowerCase()) ||
+            name.toLowerCase().includes(cat.name.toLowerCase())
+          );
+        }
+        
+        return match;
+      })
+      .filter((cat): cat is Category => cat !== null && cat !== undefined);
   }
 
   // Helper function to resolve trait names to full Trait objects
-  private async resolveTraitNamesToObjects(names: string[]): Promise<Trait[]> {
+  async resolveTraitNamesToObjects(names: string[]): Promise<Trait[]> {
     const allTraits = await traitService.getAllTraits();
     return names
-      .map(name => allTraits.find(trait => trait.name.toLowerCase() === name.toLowerCase()))
-      .filter((trait): trait is Trait => trait !== undefined);
+      .map(name => {
+        // Try exact match first
+        let match = allTraits.find(trait => 
+          trait.name.toLowerCase() === name.toLowerCase()
+        );
+        
+        // If no exact match, try partial match
+        if (!match) {
+          match = allTraits.find(trait => 
+            trait.name.toLowerCase().includes(name.toLowerCase()) ||
+            name.toLowerCase().includes(trait.name.toLowerCase())
+          );
+        }
+        
+        return match;
+      })
+      .filter((trait): trait is Trait => trait !== null && trait !== undefined);
   }
 
   async generateQuestions(
