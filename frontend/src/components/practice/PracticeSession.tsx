@@ -8,16 +8,36 @@ import { SelectedStoryDetails } from './SelectedStoryDetails';
 import { VideoRecorder } from '../recording';
 import { StoryCreationModal } from './StoryCreationModal';
 
-interface PracticeSessionProps {
-  questions: Question[];
-  onEndSession: () => void;
+interface RecordingData {
+  blob: Blob;
+  duration: number;
 }
 
-export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
-  const [selectedStories, setSelectedStories] = useState<Record<number, string | null>>({});
-  const [recordings, setRecordings] = useState<Record<number, { blob: Blob; duration: number } | null>>({});
+interface PracticeSessionProps {
+  questions: Question[];
+  currentIndex: number;
+  answeredQuestions: Set<number>;
+  selectedStories: Record<number, string | null>;
+  recordings: Record<number, RecordingData | null>;
+  onEndSession: () => void;
+  onUpdateCurrentIndex: (index: number) => void;
+  onUpdateAnsweredQuestions: (questionIndex: number) => void;
+  onUpdateSelectedStory: (questionIndex: number, storyId: string | null) => void;
+  onUpdateRecording: (questionIndex: number, recordingData: RecordingData | null) => void;
+}
+
+export const PracticeSession = ({ 
+  questions, 
+  currentIndex,
+  answeredQuestions,
+  selectedStories,
+  recordings,
+  onEndSession,
+  onUpdateCurrentIndex,
+  onUpdateAnsweredQuestions,
+  onUpdateSelectedStory,
+  onUpdateRecording
+}: PracticeSessionProps) => {
   const [isNewStoryModalOpen, setIsNewStoryModalOpen] = useState(false);
 
   const currentQuestion = questions[currentIndex];
@@ -26,18 +46,18 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
 
   const nextQuestion = () => {
     if (!isLastQuestion) {
-      setCurrentIndex(prev => prev + 1);
+      onUpdateCurrentIndex(currentIndex + 1);
     }
   };
 
   const previousQuestion = () => {
     if (!isFirstQuestion) {
-      setCurrentIndex(prev => prev - 1);
+      onUpdateCurrentIndex(currentIndex - 1);
     }
   };
 
   const markAsAnswered = () => {
-    setAnsweredQuestions(prev => new Set([...prev, currentIndex]));
+    onUpdateAnsweredQuestions(currentIndex);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -50,10 +70,7 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
   };
 
   const handleStorySelect = (storyId: string | null) => {
-    setSelectedStories(prev => ({
-      ...prev,
-      [currentIndex]: storyId
-    }));
+    onUpdateSelectedStory(currentIndex, storyId);
   };
 
   const handleAddNewStory = () => {
@@ -66,10 +83,7 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
   };
 
   const handleRecordingComplete = (blob: Blob, duration: number) => {
-    setRecordings(prev => ({
-      ...prev,
-      [currentIndex]: { blob, duration }
-    }));
+    onUpdateRecording(currentIndex, { blob, duration });
     console.log('Recording completed:', { duration, size: blob.size });
   };
 
