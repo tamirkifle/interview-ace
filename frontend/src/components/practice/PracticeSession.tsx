@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Folder } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Folder, Plus } from 'lucide-react';
 import { Question } from '../../types';
 import { Badge } from '../ui';
 import { MatchingStories } from './MatchingStories';
 import { SelectedStoryDetails } from './SelectedStoryDetails';
 import { VideoRecorder } from '../recording';
+import { StoryCreationModal } from './StoryCreationModal';
 
 interface PracticeSessionProps {
   questions: Question[];
@@ -16,6 +17,7 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [selectedStories, setSelectedStories] = useState<Record<number, string | null>>({});
   const [recordings, setRecordings] = useState<Record<number, { blob: Blob; duration: number } | null>>({});
+  const [isNewStoryModalOpen, setIsNewStoryModalOpen] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -51,6 +53,15 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
       ...prev,
       [currentIndex]: storyId
     }));
+  };
+
+  const handleAddNewStory = () => {
+    setIsNewStoryModalOpen(true);
+  };
+
+  const handleStoryCreated = (storyId: string) => {
+    setIsNewStoryModalOpen(false);
+    handleStorySelect(storyId);
   };
 
   const handleRecordingComplete = (blob: Blob, duration: number) => {
@@ -127,6 +138,13 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
                 </div>
               )}
             </div>
+            <button
+              onClick={handleAddNewStory}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Story
+            </button>
           </div>
 
           <h2 className="text-2xl font-semibold text-gray-900 mb-6 leading-relaxed">
@@ -195,6 +213,14 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
           </div>
         </div>
       </div>
+      
+      <StoryCreationModal
+        isOpen={isNewStoryModalOpen}
+        onClose={() => setIsNewStoryModalOpen(false)}
+        onStoryCreated={handleStoryCreated}
+        initialCategoryIds={currentQuestion.categories?.map(c => c.id) || []}
+        initialTraitIds={currentQuestion.traits?.map(t => t.id) || []}
+      />
     </div>
   );
 };

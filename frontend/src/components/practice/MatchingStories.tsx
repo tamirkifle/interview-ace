@@ -23,6 +23,8 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
 
   const matchingStories = matchingData?.question?.matchingStories || [];
   const allStories = allStoriesData?.stories || [];
+  const currentQuestionCategories = matchingData?.question?.categories || [];
+  const currentQuestionTraits = matchingData?.question?.traits || [];
 
   // Filter relevant stories (score > 0)
   const relevantStories = matchingStories.filter((ms: any) => ms.relevanceScore > 0);
@@ -260,14 +262,16 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
         <div className="mt-6 space-y-6">
           {/* Relevant Stories Section */}
           <div>
-            <div className="flex items-center mb-4">
-              <Target className="w-5 h-5 text-primary-600 mr-2" />
-              <h3 className="text-lg font-medium text-gray-900">
-                Relevant Stories
-              </h3>
-              <span className="text-sm text-gray-500 ml-2">
-                ({relevantStories.length} found)
-              </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <Target className="w-5 h-5 text-primary-600 mr-2" />
+                <h3 className="text-lg font-medium text-gray-900">
+                  Relevant Stories
+                </h3>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({relevantStories.length} found)
+                </span>
+              </div>
             </div>
 
             {relevantStories.length > 0 ? (

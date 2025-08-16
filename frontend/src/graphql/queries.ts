@@ -37,7 +37,6 @@ export const GET_STORIES = gql`
     }
   }
 `;
-
 export const GET_CATEGORIES = gql`
   query GetCategories {
     categories {
@@ -48,7 +47,6 @@ export const GET_CATEGORIES = gql`
     }
   }
 `;
-
 export const GET_TRAITS = gql`
   query GetTraits {
     traits {
@@ -58,7 +56,6 @@ export const GET_TRAITS = gql`
     }
   }
 `;
-
 export const GET_QUESTIONS = gql`
   query GetQuestions {
     questions {
@@ -81,8 +78,7 @@ export const GET_QUESTIONS = gql`
       }
     }
   }
-`; 
-
+`;
 export const CREATE_STORY = gql`
   mutation CreateStory($input: CreateStoryInput!) {
     createStory(input: $input) {
@@ -106,11 +102,21 @@ export const CREATE_STORY = gql`
     }
   }
 `;
-
 export const GET_MATCHING_STORIES = gql`
   query GetMatchingStories($questionId: ID!, $limit: Int = 3) {
     question(id: $questionId) {
       id
+      categories {
+        id
+        name
+        description
+        color
+      }
+      traits {
+        id
+        name
+        description
+      }
       matchingStories(limit: $limit) {
         story {
           id
@@ -127,7 +133,7 @@ export const GET_MATCHING_STORIES = gql`
            id
            name
            description
-          }
+           }
         }
         relevanceScore
         matchedCategories {
@@ -143,7 +149,6 @@ export const GET_MATCHING_STORIES = gql`
     }
   }
 `;
-
 // Question Generation Queries
 export const GENERATE_QUESTIONS = gql`
   query GenerateQuestions($input: GenerateQuestionsInput!) {
@@ -170,13 +175,11 @@ export const GENERATE_QUESTIONS = gql`
     }
   }
 `;
-
 export const VALIDATE_LLM_KEY = gql`
   query ValidateLLMKey {
     validateLLMKey
   }
 `;
-
 export const GET_RECORDINGS_GROUPED_BY_QUESTION = gql`
   query GetRecordingsGroupedByQuestion {
     questions {
@@ -199,7 +202,6 @@ export const GET_RECORDINGS_GROUPED_BY_QUESTION = gql`
     }
   }
 `;
-
 export const GET_RECORDINGS_BY_DATE = gql`
   query GetRecordingsByDate($startDate: DateTime, $endDate: DateTime) {
     recordings(
@@ -228,7 +230,6 @@ export const GET_RECORDINGS_BY_DATE = gql`
     }
   }
 `;
-
 export const GET_ALL_RECORDINGS = gql`
   query GetAllRecordings {
     recordings {
@@ -251,7 +252,6 @@ export const GET_ALL_RECORDINGS = gql`
     }
   }
 `;
-
 export const SEARCH_RECORDINGS = gql`
   query SearchRecordings($searchTerm: String) {
     recordings(
