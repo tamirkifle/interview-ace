@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Save, SkipForward, Mic, CheckCircle, X } from 'lucide-react';
-import { QuestionGenerationResult, GeneratedQuestion } from '../../types';
+import { ResolvedGeneratedQuestion, QuestionGenerationResult } from '../../types';
 import { Badge } from '../ui';
+import { CollapsibleText } from '../ui/CollapsibleText';
 
 interface GeneratedQuestionsProps {
   result: QuestionGenerationResult;
   onClose: () => void;
-  onSaveQuestion: (question: GeneratedQuestion) => void;
-  onRecordAnswer: (question: GeneratedQuestion) => void;
+  onSaveQuestion: (question: ResolvedGeneratedQuestion) => void;
+  onRecordAnswer: (question: ResolvedGeneratedQuestion) => void;
 }
 
 export const GeneratedQuestions = ({ 
@@ -117,7 +118,7 @@ export const GeneratedQuestions = ({
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">
                 <span className="font-medium">Why this question: </span>
-                {currentQuestion.reasoning}
+                <CollapsibleText text={currentQuestion.reasoning} wordLimit={20} />
               </p>
             </div>
           )}

@@ -65,6 +65,8 @@ export const GET_QUESTIONS = gql`
       commonality
       createdAt
       updatedAt
+      source
+      reasoning
       categories {
         id
         name
@@ -75,6 +77,11 @@ export const GET_QUESTIONS = gql`
         id
         name
         description
+      }
+      job {
+        id
+        company
+        title
       }
     }
   }
@@ -154,6 +161,7 @@ export const GENERATE_QUESTIONS = gql`
   query GenerateQuestions($input: GenerateQuestionsInput!) {
     generateQuestions(input: $input) {
       questions {
+        id
         text
         difficulty
         reasoning

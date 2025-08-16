@@ -87,15 +87,24 @@ export interface StoryMatch {
 // Question Generation Types
 export interface GeneratedQuestion {
   text: string;
-  suggestedCategories: Category[];
-  suggestedTraits: Trait[];
+  suggestedCategories: string[];
+  suggestedTraits: string[];
   difficulty: string;
   reasoning: string;
   id?: string;
 }
 
+export interface ResolvedGeneratedQuestion {
+  id?: string;
+  text: string;
+  suggestedCategories: Category[];
+  suggestedTraits: Trait[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  reasoning?: string;
+}
+
 export interface QuestionGenerationResult {
-  questions: GeneratedQuestion[];
+  questions: ResolvedGeneratedQuestion[];
   generationId: string;
   sourceType: string;
   provider: string;

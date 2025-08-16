@@ -55,6 +55,8 @@ export const typeDefs = gql`
     commonality: Int!
     createdAt: DateTime!
     updatedAt: DateTime!
+    source: String
+    reasoning: String
     categories: [Category!]!
     traits: [Trait!]!
     recordings: [Recording!]!

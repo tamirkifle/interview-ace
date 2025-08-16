@@ -8,7 +8,7 @@ import { QuestionGenerator } from '../components/practice/QuestionGenerator';
 import { GeneratedQuestions } from '../components/practice/GeneratedQuestions';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { GraphQLErrorBoundary } from '../components/GraphQLErrorBoundary';
-import { Question, QuestionGenerationResult, GeneratedQuestion } from '../types';
+import { Question, ResolvedGeneratedQuestion, QuestionGenerationResult } from '../types';
 import { useAPIKeys } from '../hooks/useAPIKeys';
 import { CustomQuestion } from '../components/practice/CustomQuestion';
 
@@ -46,16 +46,16 @@ export const Practice = () => {
     setGenerationResult(result);
   };
 
-  const handleSaveGeneratedQuestion = (question: GeneratedQuestion) => {
+  const handleSaveGeneratedQuestion = (question: ResolvedGeneratedQuestion) => {
     // In a real implementation, this would save to the database
     console.log('Saving question:', question);
     // You would call a mutation here to save the question
   };
 
-  const handleRecordAnswer = (question: GeneratedQuestion) => {
+  const handleRecordAnswer = (question: ResolvedGeneratedQuestion) => {
     // Convert generated question to regular question format and start practice session
     const practiceQuestion: Question = {
-      id: `generated-${Date.now()}`,
+      id: question.id || `generated-${Date.now()}`,
       text: question.text,
       difficulty: question.difficulty,
       commonality: 5,
