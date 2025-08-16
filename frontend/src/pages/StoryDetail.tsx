@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit3, Calendar, Film, MessageCircleQuestion } from 'lucide-react';
 import { GET_STORIES } from '../graphql/queries';
 import { LoadingSpinner, ErrorMessage, Badge } from '../components/ui';
+import { CollapsibleText } from '../components/ui/CollapsibleText';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 export const StoryDetail = () => {
@@ -127,7 +128,11 @@ export const StoryDetail = () => {
               Situation
             </h3>
             <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.situation}</p>
+              <CollapsibleText 
+                text={story.situation} 
+                wordLimit={40}
+                className="text-gray-700 leading-relaxed whitespace-pre-wrap"
+              />
             </div>
           </div>
 
@@ -137,7 +142,11 @@ export const StoryDetail = () => {
               Task
             </h3>
             <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.task}</p>
+              <CollapsibleText 
+                text={story.task} 
+                wordLimit={30}
+                className="text-gray-700 leading-relaxed whitespace-pre-wrap"
+              />
             </div>
           </div>
 
@@ -147,7 +156,11 @@ export const StoryDetail = () => {
               Action
             </h3>
             <div className="bg-purple-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.action}</p>
+              <CollapsibleText 
+                text={story.action} 
+                wordLimit={50}
+                className="text-gray-700 leading-relaxed whitespace-pre-wrap"
+              />
             </div>
           </div>
 
@@ -157,7 +170,11 @@ export const StoryDetail = () => {
               Result
             </h3>
             <div className="bg-orange-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.result}</p>
+              <CollapsibleText 
+                text={story.result} 
+                wordLimit={40}
+                className="text-gray-700 leading-relaxed whitespace-pre-wrap"
+              />
             </div>
           </div>
         </div>

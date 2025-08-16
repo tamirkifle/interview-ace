@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, Folder, Plus } from 'lucide-react';
 import { Question } from '../../types';
 import { Badge } from '../ui';
+import { CollapsibleText } from '../ui/CollapsibleText';
 import { MatchingStories } from './MatchingStories';
 import { SelectedStoryDetails } from './SelectedStoryDetails';
 import { VideoRecorder } from '../recording';
@@ -79,7 +80,7 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
     `Story ${selectedStoryId}` : undefined;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div>
       {/* Sticky Header Navigation */}
       <div className="sticky top-16 z-10 bg-white border-b border-gray-200 py-4 flex items-center justify-between px-6 -mx-6">
         <button
@@ -150,6 +151,18 @@ export const PracticeSession = ({ questions, onEndSession }: PracticeSessionProp
           <h2 className="text-2xl font-semibold text-gray-900 mb-6 leading-relaxed">
             {currentQuestion.text}
           </h2>
+
+          {/* AI Reasoning */}
+          {(currentQuestion as any).reasoning && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm font-medium text-blue-900 mb-2">💡 Why this question:</p>
+              <CollapsibleText 
+                text={(currentQuestion as any).reasoning}
+                wordLimit={25}
+                className="text-sm text-blue-700"
+              />
+            </div>
+          )}
 
           {/* Categories */}
           {currentQuestion.categories && currentQuestion.categories.length > 0 && (
