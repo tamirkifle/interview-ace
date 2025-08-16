@@ -1,7 +1,6 @@
-export { LibraryHeader } from './LibraryHeader';
-export { TabNavigation } from './TabNavigation';
 export { EmptyState } from './EmptyState';
 export { QuestionsTable } from './QuestionsTable';
+export { StoriesList } from './StoriesList';
 export { RecordingCard } from './RecordingCard';
 export { RecordingPlayer } from './RecordingPlayer';
 export { RecordingFilters } from './RecordingFilters';

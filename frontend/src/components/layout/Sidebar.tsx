@@ -5,9 +5,10 @@ import { getIcon } from '../../utils/categoryIcons';
 
 const navigation = [
   { name: 'Dashboard', path: '/' },
-  { name: 'Stories', path: '/stories' },
+  { name: 'Questions', path: '/questions' },
   { name: 'Practice', path: '/practice' },
-  { name: 'Library', path: '/library' },
+  { name: 'Stories', path: '/stories' },
+  { name: 'Recordings', path: '/recordings' },
   { name: 'Analytics', path: '/analytics' },
   { name: 'Settings', path: '/settings' },
 ];
@@ -78,4 +79,4 @@ export const Sidebar = ({ onCollapse }: SidebarProps) => {
       </nav>
     </aside>
   );
-}; 
+};

@@ -5,16 +5,19 @@ import {
   BarChart,
   Settings,
   type LucideIcon,
-  Library,
+  MessageCircleQuestion,
+  Target,
+  Video,
 } from 'lucide-react';
 
 export const navigationIcons: Record<string, LucideIcon> = {
   Dashboard: LayoutDashboard,
+  Questions: MessageCircleQuestion,
+  Practice: Target,
   Stories: BookOpen,
-  Practice: Mic,
+  Recordings: Video,
   Analytics: BarChart,
   Settings: Settings,
-  Library: Library,
 };
 
 export const getIcon = (name: string): LucideIcon => {

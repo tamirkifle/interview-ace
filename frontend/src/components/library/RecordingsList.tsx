@@ -209,7 +209,8 @@ export const RecordingsList = () => {
     setPlayingRecordingId(recordingId);
   };
 
-  const handleDeleteRecording = async (recordingId: string) => {
+  const handleDeleteRecording = async (recordingId: string, event?: React.MouseEvent) => {
+    if (event) event.stopPropagation();
     if (!confirm('Are you sure you want to delete this recording?')) return;
 
     try {
@@ -219,7 +220,8 @@ export const RecordingsList = () => {
     }
   };
 
-  const handleDownloadRecording = (recording: Recording) => {
+  const handleDownloadRecording = (recording: Recording, event?: React.MouseEvent) => {
+    if (event) event.stopPropagation();
     // Create download link
     const downloadUrl = `http://localhost:9000/recordings/${recording.minio_key}`;
     const link = document.createElement('a');
@@ -295,19 +297,24 @@ export const RecordingsList = () => {
       ) : (
         <div className="space-y-4">
           {viewMode === 'timeline' ? (
-            // Timeline View
+            // Timeline View - Make cards clickable
             filteredRecordings.map((recording: Recording) => (
-              <RecordingCard
+              <div
                 key={recording.id}
-                recording={recording}
-                isPlaying={playingRecordingId === recording.id}
-                onPlayPause={() => handlePlayRecording(recording.id)}
-                onDelete={() => handleDeleteRecording(recording.id)}
-                onDownload={() => handleDownloadRecording(recording)}
-              />
+                className="cursor-pointer"
+                onClick={() => handlePlayRecording(recording.id)}
+              >
+                <RecordingCard
+                  recording={recording}
+                  isPlaying={playingRecordingId === recording.id}
+                  onPlayPause={() => handlePlayRecording(recording.id)}
+                  onDelete={() => handleDeleteRecording(recording.id)}
+                  onDownload={() => handleDownloadRecording(recording)}
+                />
+              </div>
             ))
           ) : (
-            // Question View
+            // Question View - Make question rows clickable
             (Object.entries(recordingsByQuestion) as [string, Recording[]][]).map(([questionId, questionRecordings]) => {
               const question = questions.find((q: Question) => q.id === questionId);
               return (
@@ -329,7 +336,11 @@ export const RecordingsList = () => {
                   </div>
                   <div className="divide-y divide-gray-200">
                     {questionRecordings.map((recording: Recording, index: number) => (
-                      <div key={recording.id} className="p-4 hover:bg-gray-50">
+                      <div 
+                        key={recording.id} 
+                        className="p-4 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handlePlayRecording(recording.id)}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             <span className="text-sm font-medium text-gray-500">
@@ -341,7 +352,7 @@ export const RecordingsList = () => {
                             </div>
                             {recording.story && (
                               <Link 
-                                to={`/library/stories/${recording.story.id}/edit`}
+                                to={`/stories/${recording.story.id}`}
                                 className="flex items-center space-x-1 text-sm text-gray-500 hover:text-primary-600"
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -351,51 +362,48 @@ export const RecordingsList = () => {
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
-                          {(!recording.transcriptStatus || recording.transcriptStatus === TranscriptionStatus.FAILED || 
-                              (recording.transcriptStatus === TranscriptionStatus.NONE && hasTranscriptionEnabled)) && (
+                            {(!recording.transcriptStatus || recording.transcriptStatus === TranscriptionStatus.FAILED || 
+                                (recording.transcriptStatus === TranscriptionStatus.NONE && hasTranscriptionEnabled)) && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    try {
+                                      await retryTranscription({ variables: { id: recording.id } });
+                                    } catch (error) {
+                                      // Error handled by onError
+                                    }
+                                  }}
+                                  disabled={retrying}
+                                  className={`p-1.5 ${
+                                    recording.transcriptStatus === TranscriptionStatus.FAILED 
+                                      ? 'text-orange-600 hover:bg-orange-50' 
+                                      : 'text-primary-600 hover:bg-primary-50'
+                                  } rounded transition-colors`}
+                                  title={recording.transcriptStatus === TranscriptionStatus.FAILED ? "Retry transcription" : "Transcribe recording"}
+                                >
+                                  {recording.transcriptStatus === TranscriptionStatus.FAILED ? (
+                                    <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+                                  ) : (
+                                    <FileText className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+                                  )}
+                                </button>
+                              )}
                               <button
-                                onClick={async (e) => {
-                                  e.preventDefault();
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  try {
-                                    await retryTranscription({ variables: { id: recording.id } });
-                                  } catch (error) {
-                                    // Error handled by onError
-                                  }
+                                  handleDownloadRecording(recording);
                                 }}
-                                disabled={retrying}
-                                className={`p-1.5 ${
-                                  recording.transcriptStatus === TranscriptionStatus.FAILED 
-                                    ? 'text-orange-600 hover:bg-orange-50' 
-                                    : 'text-primary-600 hover:bg-primary-50'
-                                } rounded transition-colors`}
-                                title={recording.transcriptStatus === TranscriptionStatus.FAILED ? "Retry transcription" : "Transcribe recording"}
+                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
                               >
-                                {recording.transcriptStatus === TranscriptionStatus.FAILED ? (
-                                  <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
-                                ) : (
-                                  <FileText className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
-                                )}
+                                <Download className="w-4 h-4" />
                               </button>
-                            )}
-                            <button
-                              onClick={() => handlePlayRecording(recording.id)}
-                              className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                            >
-                              <Film className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDownloadRecording(recording)}
-                              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRecording(recording.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              <button
+                                onClick={(e) => handleDeleteRecording(recording.id, e)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                           </div>
                         </div>
                       </div>
