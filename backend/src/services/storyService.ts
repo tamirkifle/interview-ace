@@ -310,4 +310,80 @@ export class StoryService {
       await session.close();
     }
   }
+
+  async updateStory(id: string, input: {
+    title: string;
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+    categoryIds?: string[];
+    traitIds?: string[];
+  }): Promise<Story> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const now = new Date().toISOString();
+      
+      // Update story properties
+      await session.run(`
+        MATCH (s:Story {id: $id})
+        SET s.title = $title,
+            s.situation = $situation,
+            s.task = $task,
+            s.action = $action,
+            s.result = $result,
+            s.updatedAt = $updatedAt
+      `, {
+        id,
+        title: input.title,
+        situation: input.situation,
+        task: input.task,
+        action: input.action,
+        result: input.result,
+        updatedAt: now
+      });
+
+      // Remove existing relationships
+      await session.run(`
+        MATCH (s:Story {id: $id})-[r:BELONGS_TO|DEMONSTRATES|ANSWERS]->()
+        DELETE r
+      `, { id });
+
+      // Create new category relationships
+      if (input.categoryIds && input.categoryIds.length > 0) {
+        await session.run(`
+          MATCH (s:Story {id: $id})
+          UNWIND $categoryIds AS categoryId
+          MATCH (c:Category {id: categoryId})
+          MERGE (s)-[:BELONGS_TO]->(c)
+        `, { id, categoryIds: input.categoryIds });
+
+        // Recreate ANSWERS relationships with questions that share categories
+        await session.run(`
+          MATCH (s:Story {id: $id})-[:BELONGS_TO]->(cat:Category)<-[:TESTS_FOR]-(q:Question)
+          MERGE (s)-[:ANSWERS]->(q)
+        `, { id });
+      }
+
+      // Create new trait relationships
+      if (input.traitIds && input.traitIds.length > 0) {
+        await session.run(`
+          MATCH (s:Story {id: $id})
+          UNWIND $traitIds AS traitId
+          MATCH (t:Trait {id: traitId})
+          MERGE (s)-[:DEMONSTRATES]->(t)
+        `, { id, traitIds: input.traitIds });
+      }
+
+      // Return updated story
+      const result = await session.run(`
+        MATCH (s:Story {id: $id})
+        RETURN s
+      `, { id });
+      
+      return processRecordProperties(result.records[0].get('s').properties);
+    } finally {
+      await session.close();
+    }
+  }
 }

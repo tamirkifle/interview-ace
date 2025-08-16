@@ -428,7 +428,27 @@ export const resolvers = {
           }
         });
       }
-    }
+    },
+    updateStory: async (_: any, { id, input }: { id: string; input: any }) => {
+      const { title, situation, task, action, result, categoryIds, traitIds } = input;
+      
+      // Validation
+      if (!title?.trim() || !situation?.trim() || !task?.trim() || !action?.trim() || !result?.trim()) {
+        throw new GraphQLError('All STAR fields and title are required', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      return storyService.updateStory(id, {
+        title: title.trim(),
+        situation: situation.trim(),
+        task: task.trim(),
+        action: action.trim(),
+        result: result.trim(),
+        categoryIds: categoryIds || [],
+        traitIds: traitIds || []
+      });
+    },
   },
 
   Story: {

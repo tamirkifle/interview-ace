@@ -231,9 +231,20 @@ export const typeDefs = gql`
     createdAt_ASC
     createdAt_DESC
   }
+  
+  input UpdateStoryInput {
+    title: String!
+    situation: String!
+    task: String!
+    action: String!
+    result: String!
+    categoryIds: [ID!]
+    traitIds: [ID!]
+  }
 
   type Mutation {
     createStory(input: CreateStoryInput!): Story!
+    updateStory(id: ID!, input: UpdateStoryInput!): Story!
     createRecording(input: CreateRecordingInput!): Recording!
     deleteRecording(id: ID!): Boolean!
     createCustomQuestion(input: CreateCustomQuestionInput!): Question!

@@ -96,6 +96,29 @@ export const UPDATE_QUESTION_FULL = gql`
   }
 `;
 
+export const UPDATE_STORY = gql`
+  mutation UpdateStory($id: ID!, $input: UpdateStoryInput!) {
+    updateStory(id: $id, input: $input) {
+      id
+      title
+      situation
+      task
+      action
+      result
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;
+
 export const RETRY_TRANSCRIPTION = gql`
   mutation RetryTranscription($id: ID!) {
     retryTranscription(id: $id) {
