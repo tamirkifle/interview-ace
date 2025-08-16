@@ -53,6 +53,33 @@ export class OpenAIProvider extends BaseLLMProvider {
     }
   }
 
+  async generateCompletion(prompt: string): Promise<string> {
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 2000
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new LLMError('No response from OpenAI', 'PROVIDER_ERROR', 'openai');
+      }
+
+      return content;
+    } catch (error: any) {
+      if (error.status === 401) {
+        throw new LLMError('Invalid OpenAI API key', 'INVALID_API_KEY', 'openai');
+      }
+      throw new LLMError(
+        error.message || 'OpenAI completion failed',
+        'PROVIDER_ERROR',
+        'openai'
+      );
+    }
+  }
+
   async validateApiKey(): Promise<boolean> {
     try {
       await this.client.models.list();

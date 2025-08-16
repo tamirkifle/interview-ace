@@ -60,7 +60,7 @@ export class JobService {
       try {
         const result = await session.run(
           `
-          MATCH (j:Job {id: $jobId})<-[:GENERATED_FOR_JOB]-(q:Question)
+          MATCH (q:Question)-[:TESTS_FOR]->(j:Job {id: $jobId})
           RETURN q
           ORDER BY q.createdAt DESC
           `,
@@ -77,13 +77,29 @@ export class JobService {
       try {
         const result = await session.run(
           `
-          MATCH (j:Job {company: $company})<-[:GENERATED_FOR_JOB]-(q:Question)
+          MATCH (q:Question)-[:TESTS_FOR]->(j:Job {company: $company})
           RETURN q
           ORDER BY q.createdAt DESC
           `,
           { company }
         );
         return result.records.map((record: Record) => record.get('q').properties);
+      } finally {
+        await session.close();
+      }
+    }
+
+    async linkQuestionToJob(questionId: string, jobId: string): Promise<void> {
+      const session = await neo4jConnection.getSession();
+      try {
+        await session.run(
+          `
+          MATCH (q:Question {id: $questionId})
+          MATCH (j:Job {id: $jobId})
+          MERGE (q)-[:TESTS_FOR]->(j)
+          `,
+          { questionId, jobId }
+        );
       } finally {
         await session.close();
       }

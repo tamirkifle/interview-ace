@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { Play, Sparkles, BookOpen, Library, Plus } from 'lucide-react';
+import { Play, Sparkles, BookOpen, Library, Plus, FileText } from 'lucide-react';
 import { GET_QUESTIONS } from '../graphql/queries';
 import { CREATE_CUSTOM_QUESTION } from '../graphql/mutations';
 import { LoadingSpinner } from '../components/ui';
 import { PracticeSession } from '../components/practice/PracticeSession';
 import { QuestionGenerator } from '../components/practice/QuestionGenerator';
 import { GeneratedQuestions } from '../components/practice/GeneratedQuestions';
+import { ResumeQuestionGenerator } from '../components/practice/ResumeQuestionGenerator';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { GraphQLErrorBoundary } from '../components/GraphQLErrorBoundary';
 import { Question, ResolvedGeneratedQuestion, QuestionGenerationResult } from '../types';
@@ -18,7 +19,7 @@ export const Practice = () => {
   const { getAPIKeyStatus } = useAPIKeys();
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
-  const [activeTab, setActiveTab] = useState<'library' | 'practice' | 'generate' | 'custom'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'practice' | 'generate' | 'custom' | 'resume'>('library');
   const [questionLimit, setQuestionLimit] = useState<number | 'all'>(5);
 
   const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
@@ -57,8 +58,8 @@ export const Practice = () => {
           input: {
             text: question.text,
             difficulty: question.difficulty,
-            categoryIds: question.suggestedCategories.map(c => c.id),
-            traitIds: question.suggestedTraits.map(t => t.id),
+            categoryIds: question.suggestedCategories?.map(c => c.id) || [],
+            traitIds: question.suggestedTraits?.map(t => t.id) || [],
             reasoning: question.reasoning,
           },
         },
@@ -77,8 +78,8 @@ export const Practice = () => {
       commonality: 5,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      categories: question.suggestedCategories,
-      traits: question.suggestedTraits
+      categories: question.suggestedCategories || [],
+      traits: question.suggestedTraits || []
     };
     setSessionQuestions([practiceQuestion]);
     setIsSessionActive(true);
@@ -173,6 +174,22 @@ export const Practice = () => {
                   >
                     <Sparkles className="w-4 h-4 inline mr-2" />
                     Generate Questions
+                    {!isLLMConfigured && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        Setup Required
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('resume')}
+                    className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'resume'
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 inline mr-2" />
+                    Resume Questions
                     {!isLLMConfigured && (
                       <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                         Setup Required
@@ -351,6 +368,24 @@ export const Practice = () => {
                     />
                   ) : (
                     <QuestionGenerator
+                      onQuestionsGenerated={handleQuestionsGenerated}
+                      isConfigured={isLLMConfigured}
+                    />
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'resume' && (
+                <div className="max-w-4xl mx-auto">
+                  {generationResult ? (
+                    <GeneratedQuestions
+                      result={generationResult}
+                      onClose={() => setGenerationResult(null)}
+                      onSaveQuestion={handleSaveGeneratedQuestion}
+                      onRecordAnswer={handleRecordAnswer}
+                    />
+                  ) : (
+                    <ResumeQuestionGenerator
                       onQuestionsGenerated={handleQuestionsGenerated}
                       isConfigured={isLLMConfigured}
                     />

@@ -68,7 +68,7 @@ export class QuestionService {
     try {
       const result = await session.run(
         `
-        MATCH (q:Question {id: $questionId})-[:GENERATED_FOR_JOB]->(j:Job)
+        MATCH (q:Question {id: $questionId})-[:TESTS_FOR]->(j:Job)
         RETURN j
         `,
         { questionId }
@@ -199,7 +199,7 @@ export class QuestionService {
         `
         MATCH (q:Question {id: $questionId})
         MATCH (j:Job {id: $jobId})
-        MERGE (q)-[:GENERATED_FOR_JOB]->(j)
+        MERGE (q)-[:TESTS_FOR]->(j)
         `,
         { questionId, jobId }
       );

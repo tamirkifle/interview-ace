@@ -3,38 +3,70 @@ import { CategoryService } from '../../services/categoryService';
 import { TraitService } from '../../services/traitService';
 import { QuestionService } from '../../services/questionService';
 import { RecordingService } from '../../services/recordingService';
+import { ExperienceService } from '../../services/experienceService';
+import { ProjectService } from '../../services/projectService';
 import { dateTimeScalar } from '../schema/scalars';
 import { llmService, LLMError } from '../../services/llm';
 import { JobService } from '../../services/jobService';
+import { ResumeProcessorPrompts } from '../../services/llm/prompts/resumeProcessor';
 import { GraphQLError } from 'graphql';
 import { Category, Trait } from '../../services/storyService';
 import { GeneratedQuestion, ResolvedGeneratedQuestion } from '../../services/llm/types';
+import { neo4jConnection } from '../../db/neo4j';
 
 const storyService = new StoryService();
 const categoryService = new CategoryService();
 const traitService = new TraitService();
 const questionService = new QuestionService();
 const recordingService = new RecordingService();
+const experienceService = new ExperienceService();
+const projectService = new ProjectService();
 const jobService = new JobService();
 
 // Helper function to convert category names to Category objects
 async function resolveSuggestedCategories(categoryNames: string[]): Promise<Category[]> {
   const allCategories = await categoryService.getAllCategories();
   return categoryNames
-    .map(name => allCategories.find(cat => 
-      cat.name.toLowerCase() === name.toLowerCase()
-    ))
-    .filter((cat): cat is Category => cat !== null);
+    .map(name => {
+      // Try exact match first
+      let match = allCategories.find(cat => 
+        cat.name.toLowerCase() === name.toLowerCase()
+      );
+      
+      // If no exact match, try partial match
+      if (!match) {
+        match = allCategories.find(cat => 
+          cat.name.toLowerCase().includes(name.toLowerCase()) ||
+          name.toLowerCase().includes(cat.name.toLowerCase())
+        );
+      }
+      
+      return match;
+    })
+    .filter((cat): cat is Category => cat !== null && cat !== undefined);
 }
 
 // Helper function to convert trait names to Trait objects
 async function resolveSuggestedTraits(traitNames: string[]): Promise<Trait[]> {
   const allTraits = await traitService.getAllTraits();
   return traitNames
-    .map(name => allTraits.find(trait => 
-      trait.name.toLowerCase() === name.toLowerCase()
-    ))
-    .filter((trait): trait is Trait => trait !== null);
+    .map(name => {
+      // Try exact match first
+      let match = allTraits.find(trait => 
+        trait.name.toLowerCase() === name.toLowerCase()
+      );
+      
+      // If no exact match, try partial match
+      if (!match) {
+        match = allTraits.find(trait => 
+          trait.name.toLowerCase().includes(name.toLowerCase()) ||
+          name.toLowerCase().includes(trait.name.toLowerCase())
+        );
+      }
+      
+      return match;
+    })
+    .filter((trait): trait is Trait => trait !== null && trait !== undefined);
 }
 
 export const resolvers = {
@@ -78,6 +110,18 @@ export const resolvers = {
     },
     questionsForCompany: async (_: any, { company }: { company: string }) => {
       return jobService.getQuestionsForCompany(company);
+    },
+    experiences: async () => {
+      return experienceService.getAllExperiences();
+    },
+    experience: async (_: any, { id }: { id: string }) => {
+      return experienceService.getExperienceById(id);
+    },
+    projects: async () => {
+      return projectService.getAllProjects();
+    },
+    project: async (_: any, { id }: { id: string }) => {
+      return projectService.getProjectById(id);
     },
     
     // Question Generation
@@ -258,6 +302,177 @@ export const resolvers = {
       }
       
       return recordingService.retryTranscription(id, context.transcriptionContext);
+    },
+
+    processResume: async (_: any, { input }: { input: { resumeText: string } }, context: any) => {
+      if (!context.llmContext?.provider || !context.llmContext?.apiKey) {
+        throw new GraphQLError('LLM not configured', {
+          extensions: { code: 'LLM_NOT_CONFIGURED' }
+        });
+      }
+
+      try {
+        const prompt = ResumeProcessorPrompts.buildResumeAnalysisPrompt(input.resumeText);
+        const provider = llmService.getProvider(context.llmContext);
+        
+        // Get AI analysis
+        const rawCompletion = await provider.generateCompletion(prompt);
+        
+        // Clean response to remove markdown formatting
+        const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
+        const analysis = JSON.parse(cleanedResponse);
+        
+        const processedExperiences = [];
+        const processedProjects = [];
+        
+        // Process experiences
+        for (const exp of analysis.experiences || []) {
+          const consolidationFn = async (oldDesc: string, newDesc: string) => {
+            const consolidationPrompt = ResumeProcessorPrompts.buildConsolidationPrompt(oldDesc, newDesc);
+            const rawConsolidation = await provider.generateCompletion(consolidationPrompt);
+            return rawConsolidation.replace(/```json\n|```/g, '').trim();
+          };
+          
+          const experience = await experienceService.createOrUpdateExperience(
+            exp.id, 
+            exp.description,
+            consolidationFn
+          );
+          processedExperiences.push(experience);
+        }
+        
+        // Process projects  
+        for (const proj of analysis.projects || []) {
+          const consolidationFn = async (oldDesc: string, newDesc: string) => {
+            const consolidationPrompt = ResumeProcessorPrompts.buildConsolidationPrompt(oldDesc, newDesc);
+            const rawConsolidation = await provider.generateCompletion(consolidationPrompt);
+            return rawConsolidation.replace(/```json\n|```/g, '').trim();
+          };
+          
+          const project = await projectService.createOrUpdateProject(
+            proj.id,
+            proj.description, 
+            consolidationFn
+          );
+          processedProjects.push(project);
+        }
+        
+        return {
+          experiencesProcessed: processedExperiences.length,
+          projectsProcessed: processedProjects.length,
+          experiences: processedExperiences,
+          projects: processedProjects
+        };
+      } catch (error: any) {
+        console.error('Resume processing error:', error);
+        throw new GraphQLError('Failed to process resume', {
+          extensions: { 
+            code: 'PROCESSING_ERROR', 
+            message: error instanceof Error ? error.message : String(error)
+          }
+        });
+      }
+    },
+
+    generateResumeQuestions: async (_: any, { input }: { input: any }, context: any) => {
+      if (!context.llmContext?.provider || !context.llmContext?.apiKey) {
+        throw new GraphQLError('LLM not configured', {
+          extensions: { code: 'LLM_NOT_CONFIGURED' }
+        });
+      }
+
+      try {
+        const { entityType, entityId, count = 5, difficulty } = input;
+        
+        // Get entity description
+        let entity;
+        if (entityType === 'experience') {
+          entity = await experienceService.getExperienceById(entityId);
+        } else {
+          entity = await projectService.getProjectById(entityId);
+        }
+        
+        if (!entity) {
+          throw new GraphQLError(`${entityType} not found`, {
+            extensions: { code: 'NOT_FOUND' }
+          });
+        }
+        
+        const prompt = ResumeProcessorPrompts.buildQuestionGenerationPrompt(
+          entityType,
+          entityId,
+          entity.description,
+          count
+        );
+        
+        const provider = llmService.getProvider(context.llmContext);
+        const rawCompletion = await provider.generateCompletion(prompt);
+        
+        // Clean response to remove markdown formatting
+        const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
+        const questions = JSON.parse(cleanedResponse);
+        
+        // Resolve category and trait names to objects
+        const resolvedQuestions = await Promise.all(
+          questions.map(async (q: any) => {
+            console.log('Raw question from LLM:', q);
+            console.log('suggestedCategories:', q.suggestedCategories);
+            console.log('suggestedTraits:', q.suggestedTraits);
+            
+            const resolvedCategories = await resolveSuggestedCategories(q.suggestedCategories || []);
+            const resolvedTraits = await resolveSuggestedTraits(q.suggestedTraits || []);
+            
+            console.log('resolvedCategories:', resolvedCategories);
+            console.log('resolvedTraits:', resolvedTraits);
+            
+            const question = await questionService.createQuestion({
+              text: q.text,
+              difficulty: difficulty || q.difficulty,
+              commonality: 5,
+              source: 'resume',
+              reasoning: q.reasoning,
+              categoryIds: resolvedCategories.map(c => c.id),
+              traitIds: resolvedTraits.map(t => t.id)
+            });
+            
+            // Link to entity using TESTS_FOR relationship
+            const session = await neo4jConnection.getSession();
+            try {
+              await session.run(`
+                MATCH (q:Question {id: $questionId})
+                MATCH (e:${entityType === 'experience' ? 'Experience' : 'Project'} {id: $entityId})
+                MERGE (q)-[:TESTS_FOR]->(e)
+              `, { questionId: question.id, entityId });
+            } finally {
+              await session.close();
+            }
+            
+            return {
+              id: question.id,
+              text: question.text,
+              difficulty: question.difficulty,
+              reasoning: q.reasoning,
+              suggestedCategories: resolvedCategories,
+              suggestedTraits: resolvedTraits
+            };
+          })
+        );
+        
+        return {
+          questions: resolvedQuestions,
+          generationId: `resume-${Date.now()}`,
+          sourceType: 'resume',
+          provider: context.llmContext.provider
+        };
+      } catch (error: any) {
+        console.error('Resume question generation error:', error);
+        throw new GraphQLError('Failed to generate questions', {
+          extensions: { 
+            code: 'GENERATION_ERROR', 
+            message: error instanceof Error ? error.message : String(error)
+          }
+        });
+      }
     }
   },
 
@@ -300,6 +515,18 @@ export const resolvers = {
     }
   },
 
+  Experience: {
+    questions: async (parent: { id: string }) => {
+      return experienceService.getExperienceQuestions(parent.id);
+    }
+  },
+
+  Project: {
+    questions: async (parent: { id: string }) => {
+      return projectService.getProjectQuestions(parent.id);
+    }
+  },
+
   Question: {
     categories: async (parent: { id: string }) => {
       return questionService.getQuestionCategories(parent.id);
@@ -315,7 +542,40 @@ export const resolvers = {
       return storyService.findMatchingStories(parent.id, intLimit);
     },
     job: async (parent: { id: string }) => {
-      return questionService.getQuestionJob(parent.id);
+      const session = await neo4jConnection.getSession();
+      try {
+        const result = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(j:Job)
+          RETURN j
+        `, { id: parent.id });
+        return result.records[0]?.get('j').properties || null;
+      } finally {
+        await session.close();
+      }
+    },
+    experience: async (parent: { id: string }) => {
+      const session = await neo4jConnection.getSession();
+      try {
+        const result = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(e:Experience)
+          RETURN e
+        `, { id: parent.id });
+        return result.records[0]?.get('e').properties || null;
+      } finally {
+        await session.close();
+      }
+    },
+    project: async (parent: { id: string }) => {
+      const session = await neo4jConnection.getSession();
+      try {
+        const result = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(p:Project)
+          RETURN p
+        `, { id: parent.id });
+        return result.records[0]?.get('p').properties || null;
+      } finally {
+        await session.close();
+      }
     }
   },
 

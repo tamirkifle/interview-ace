@@ -50,6 +50,33 @@ export class AnthropicProvider extends BaseLLMProvider {
     }
   }
 
+  async generateCompletion(prompt: string): Promise<string> {
+    try {
+      const message = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 2000,
+        temperature: 0.7,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const content = message.content[0].type === 'text' ? message.content[0].text : '';
+      if (!content) {
+        throw new LLMError('No response from Anthropic', 'PROVIDER_ERROR', 'anthropic');
+      }
+
+      return content;
+    } catch (error: any) {
+      if (error.status === 401) {
+        throw new LLMError('Invalid Anthropic API key', 'INVALID_API_KEY', 'anthropic');
+      }
+      throw new LLMError(
+        error.message || 'Anthropic completion failed',
+        'PROVIDER_ERROR',
+        'anthropic'
+      );
+    }
+  }
+
   async validateApiKey(): Promise<boolean> {
     try {
       // Try a minimal request to validate the key

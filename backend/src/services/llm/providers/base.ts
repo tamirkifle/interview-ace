@@ -20,6 +20,8 @@ export abstract class BaseLLMProvider implements LLMProvider {
 
   abstract generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]>;
   
+  abstract generateCompletion(prompt: string): Promise<string>;
+  
   abstract validateApiKey(): Promise<boolean>;
 
   getName(): string {

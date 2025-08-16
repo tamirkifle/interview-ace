@@ -54,6 +54,35 @@ export class OllamaProvider extends BaseLLMProvider {
     }
   }
 
+  async generateCompletion(prompt: string): Promise<string> {
+    try {
+      const response = await axios.post<OllamaGenerateResponse>(
+        `${this.baseUrl}/api/generate`, 
+        {
+          model: this.model,
+          prompt,
+          stream: false
+        }
+      );
+
+      const content = response.data.response;
+      if (!content) {
+        throw new LLMError('No response from Ollama', 'PROVIDER_ERROR', 'ollama');
+      }
+
+      return content;
+    } catch (error: any) {
+      if (error.code === 'ECONNREFUSED') {
+        throw new LLMError('Cannot connect to Ollama. Is it running?', 'PROVIDER_ERROR', 'ollama');
+      }
+      throw new LLMError(
+        error.message || 'Ollama completion failed',
+        'PROVIDER_ERROR',
+        'ollama'
+      );
+    }
+  }
+
   async validateApiKey(): Promise<boolean> {
     try {
       await axios.get(`${this.baseUrl}/api/tags`);

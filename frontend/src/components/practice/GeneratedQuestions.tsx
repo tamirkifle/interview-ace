@@ -124,7 +124,7 @@ export const GeneratedQuestions = ({
           )}
 
           {/* Suggested Categories */}
-          {currentQuestion.suggestedCategories.length > 0 && (
+          {currentQuestion.suggestedCategories && currentQuestion.suggestedCategories.length > 0 && (
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Assesses:</p>
               <div className="flex flex-wrap gap-2">
@@ -143,7 +143,7 @@ export const GeneratedQuestions = ({
           )}
 
           {/* Suggested Traits */}
-          {currentQuestion.suggestedTraits.length > 0 && (
+          {currentQuestion.suggestedTraits && currentQuestion.suggestedTraits.length > 0 && (
             <div>
               <p className="text-sm font-medium text-gray-700 mb-2">Evaluates:</p>
               <div className="flex flex-wrap gap-2">

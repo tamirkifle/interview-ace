@@ -16,9 +16,8 @@ const jobService = new JobService();
 const categoryService = new CategoryService();
 const traitService = new TraitService();
 
-
 export class LLMService {
-  private getProvider(context: LLMContext): LLMProvider {
+  getProvider(context: LLMContext): LLMProvider {
     const { provider, apiKey, model } = context;
     if (!provider) {
       throw new LLMError('No LLM provider specified', 'INVALID_REQUEST', 'unknown');

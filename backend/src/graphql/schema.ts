@@ -48,6 +48,22 @@ export const typeDefs = gql`
     questions: [Question!]!
   }
 
+  type Experience {
+    id: ID!
+    description: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    questions: [Question!]!
+  }
+
+  type Project {
+    id: ID!
+    description: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    questions: [Question!]!
+  }
+
   type Question {
     id: ID!
     text: String!
@@ -62,6 +78,8 @@ export const typeDefs = gql`
     recordings: [Recording!]!
     matchingStories(limit: Int = 5): [StoryMatch!]!
     job: Job
+    experience: Experience
+    project: Project
   }
 
   type Recording {
@@ -130,6 +148,10 @@ export const typeDefs = gql`
     ): [Recording!]!
     recordingsByQuestion(questionId: ID!): [Recording!]!
     questionsForCompany(company: String!): [Question!]!
+    experiences: [Experience!]!
+    experience(id: ID!): Experience
+    projects: [Project!]!
+    project(id: ID!): Project
 
     # Question Generation
     generateQuestions(input: GenerateQuestionsInput!): QuestionGenerationResult!
@@ -179,6 +201,24 @@ export const typeDefs = gql`
     categoryIds: [ID!]!
     traitIds: [ID!]!
   }
+
+  input ProcessResumeInput {
+    resumeText: String!
+  }
+
+  input GenerateResumeQuestionsInput {
+    entityType: String! # "experience" or "project"
+    entityId: String!
+    count: Int = 5
+    difficulty: String
+  }
+
+  type ProcessResumeResult {
+    experiencesProcessed: Int!
+    projectsProcessed: Int!
+    experiences: [Experience!]!
+    projects: [Project!]!
+  }
     
   input RecordingWhereInput {
     createdAt_gte: DateTime
@@ -201,5 +241,7 @@ export const typeDefs = gql`
     deleteQuestions(ids: [ID!]!): Int!
     updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!
     retryTranscription(id: ID!): Recording!
+    processResume(input: ProcessResumeInput!): ProcessResumeResult!
+    generateResumeQuestions(input: GenerateResumeQuestionsInput!): QuestionGenerationResult!
   }
 `;

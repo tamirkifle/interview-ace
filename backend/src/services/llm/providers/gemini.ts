@@ -20,11 +20,9 @@ export class GeminiProvider extends BaseLLMProvider {
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
-      // console.log({prompt})
       const result = await genModel.generateContent(prompt);
       const response = await result.response;
       const content = response.text();
-      // console.log({content})
 
       return this.parseQuestionResponse(content);
 
@@ -41,6 +39,30 @@ export class GeminiProvider extends BaseLLMProvider {
       }
       throw new LLMError(
         error.message || 'Gemini request failed',
+        'PROVIDER_ERROR',
+        'gemini'
+      );
+    }
+  }
+
+  async generateCompletion(prompt: string): Promise<string> {
+    try {
+      const genModel = this.client.getGenerativeModel({ model: this.model });
+      const result = await genModel.generateContent(prompt);
+      const response = await result.response;
+      const content = response.text();
+
+      if (!content) {
+        throw new LLMError('No response from Gemini', 'PROVIDER_ERROR', 'gemini');
+      }
+
+      return content;
+    } catch (error: any) {
+      if (error.message?.includes('API_KEY_INVALID')) {
+        throw new LLMError('Invalid Gemini API key', 'INVALID_API_KEY', 'gemini');
+      }
+      throw new LLMError(
+        error.message || 'Gemini completion failed',
         'PROVIDER_ERROR',
         'gemini'
       );

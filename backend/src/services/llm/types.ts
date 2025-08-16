@@ -37,12 +37,13 @@ export interface ResolvedGeneratedQuestion {
 export interface QuestionGenerationResult {
     questions: ResolvedGeneratedQuestion[]; // <-- Update this to use the resolved type
     generationId: string;
-    sourceType: 'categories' | 'job_description' | 'mixed';
+    sourceType: 'categories' | 'job_description' | 'mixed' | 'resume';
     provider: string;
 }
   
 export interface LLMProvider {
     generateQuestions(request: GenerateQuestionsRequest): Promise<GeneratedQuestion[]>;
+    generateCompletion(prompt: string): Promise<string>;
     validateApiKey(): Promise<boolean>;
     getName(): string;
 }
