@@ -471,7 +471,7 @@ export const QuestionsTable = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => navigate(`/library/questions/${question.id}/edit`)}
+                        onClick={() => navigate(`/questions/${question.id}/edit`)}
                         className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded transition-colors"
                         title="Edit question"
                       >

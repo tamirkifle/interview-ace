@@ -35,7 +35,7 @@ export const EditQuestion = () => {
   const [updateQuestion, { loading: updating }] = useMutation(UPDATE_QUESTION_FULL, {
     refetchQueries: [{ query: GET_QUESTIONS }],
     onCompleted: () => {
-      navigate('/library');
+      navigate('/questions');
     },
     onError: (error) => {
       setValidationError(error.message);
@@ -132,11 +132,11 @@ export const EditQuestion = () => {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/questions')}
             className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Library
+            Back to Questions
           </button>
           <div className="h-6 w-px bg-gray-300" />
           <h1 className="text-2xl font-bold text-gray-900">Edit Question</h1>
@@ -145,7 +145,7 @@ export const EditQuestion = () => {
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/questions')}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
           >
             Cancel
@@ -280,7 +280,7 @@ export const EditQuestion = () => {
         <div className="flex justify-end space-x-3">
           <button
             type="button"
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/questions')}
             className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
           >
             Cancel

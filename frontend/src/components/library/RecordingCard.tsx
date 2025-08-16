@@ -132,7 +132,7 @@ export const RecordingCard = ({
               <div className="flex items-center space-x-2">
                 <BookOpen className="w-4 h-4 text-gray-400" />
                 <Link 
-                  to={`/library/stories/${recording.story.id}/edit`}
+                  to={`/stories/${recording.story.id}`}
                   className="text-sm text-gray-600 hover:text-primary-600 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
