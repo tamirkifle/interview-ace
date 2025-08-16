@@ -75,7 +75,7 @@ export const Questions = () => {
           </div>
 
           {/* Tab Navigation */}
-          <div className="max-w-6xl mx-auto mb-8">
+          <div className="mb-8">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
                 <button
@@ -137,7 +137,7 @@ export const Questions = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="max-w-6xl mx-auto">
+          <div>
             {activeTab === 'library' && (
               <div>
                 {questions.length === 0 ? (

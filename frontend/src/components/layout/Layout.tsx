@@ -1,5 +1,3 @@
-// frontend/src/components/layout/Layout.tsx
-
 import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { Header } from './Header';
@@ -16,7 +14,7 @@ export const Layout = () => {
         <main className={`flex-1 transition-all duration-300 ease-in-out ${
           isSidebarCollapsed ? 'ml-16' : 'ml-64'
         }`}>
-          <div className="px-6 py-8">
+          <div className="max-w-7xl mx-auto px-6 py-8">
             <Outlet />
           </div>
         </main>
