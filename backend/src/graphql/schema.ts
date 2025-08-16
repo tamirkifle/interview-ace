@@ -40,6 +40,14 @@ export const typeDefs = gql`
     questions: [Question!]!
   }
   
+  type Job {
+    id: ID!
+    company: String!
+    title: String!
+    description: String!
+    questions: [Question!]!
+  }
+
   type Question {
     id: ID!
     text: String!
@@ -51,6 +59,7 @@ export const typeDefs = gql`
     traits: [Trait!]!
     recordings: [Recording!]!
     matchingStories(limit: Int = 5): [StoryMatch!]!
+    job: Job
   }
 
   type Recording {
@@ -113,15 +122,15 @@ export const typeDefs = gql`
     question(id: ID!): Question
     recording(id: ID!): Recording
     recordings(
-    where: RecordingWhereInput
-    orderBy: RecordingOrderBy
-  ): [Recording!]!
+      where: RecordingWhereInput
+      orderBy: RecordingOrderBy
+    ): [Recording!]!
     recordingsByQuestion(questionId: ID!): [Recording!]!
+    questionsForCompany(company: String!): [Question!]!
 
     # Question Generation
     generateQuestions(input: GenerateQuestionsInput!): QuestionGenerationResult!
     validateLLMKey: Boolean!
-
     recordingTranscriptionStatus(id: ID!): TranscriptionStatus
   }
 
@@ -147,6 +156,8 @@ export const typeDefs = gql`
     categoryIds: [ID!]
     traitIds: [ID!]
     jobDescription: String
+    company: String
+    title: String
     count: Int = 5
     difficulty: String
   }
@@ -187,6 +198,4 @@ export const typeDefs = gql`
     updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!
     retryTranscription(id: ID!): Recording!
   }
-
-  
 `;

@@ -8,7 +8,6 @@ interface ConstraintResult {
 
 export async function initializeDatabase(): Promise<void> {
   console.log('Initializing database constraints and indexes...');
-
   // Create constraints
   const constraints = [
     {
@@ -38,9 +37,12 @@ export async function initializeDatabase(): Promise<void> {
     {
       name: 'recording_id_unique',
       query: 'CREATE CONSTRAINT recording_id_unique IF NOT EXISTS FOR (r:Recording) REQUIRE r.id IS UNIQUE'
+    },
+    {
+      name: 'job_id_unique',
+      query: 'CREATE CONSTRAINT job_id_unique IF NOT EXISTS FOR (j:Job) REQUIRE j.id IS UNIQUE'
     }
   ];
-
   // Create indexes
   const indexes = [
     // Fulltext indexes (existing)
@@ -78,6 +80,10 @@ export async function initializeDatabase(): Promise<void> {
       name: 'trait_id_range',
       query: 'CREATE INDEX trait_id_range IF NOT EXISTS FOR (t:Trait) ON (t.id)'
     },
+    {
+      name: 'job_id_range',
+      query: 'CREATE INDEX job_id_range IF NOT EXISTS FOR (j:Job) ON (j.id)'
+    },
     
     // Composite indexes for common query patterns
     {
@@ -99,7 +105,6 @@ export async function initializeDatabase(): Promise<void> {
       query: 'CREATE INDEX trait_lookup IF NOT EXISTS FOR (t:Trait) ON (t.name, t.id)'
     }
   ];
-
   // Check existing constraints
   const existingConstraints = await neo4jConnection.runQuery(
     'SHOW CONSTRAINTS YIELD name'
@@ -107,7 +112,6 @@ export async function initializeDatabase(): Promise<void> {
   const existingConstraintNames = new Set(
     existingConstraints.records.map(record => record.get('name'))
   );
-
   // Execute constraints
   const constraintResults: ConstraintResult[] = [];
   for (const constraint of constraints) {
@@ -166,13 +170,11 @@ export async function initializeDatabase(): Promise<void> {
                   result.status === 'already_exists' ? '○' : '✗';
     console.log(`${status} ${result.name}: ${result.status}${result.error ? ` (${result.error})` : ''}`);
   });
-
   console.log('\nIndex creation results:');
   indexResults.forEach(result => {
     const status = result.status === 'created' ? '✓' : 
                   result.status === 'already_exists' ? '○' : '✗';
     console.log(`${status} ${result.name}: ${result.status}${result.error ? ` (${result.error})` : ''}`);
   });
-
   console.log('\nDatabase initialization complete!');
 }

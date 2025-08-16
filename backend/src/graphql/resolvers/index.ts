@@ -5,32 +5,36 @@ import { QuestionService } from '../../services/questionService';
 import { RecordingService } from '../../services/recordingService';
 import { dateTimeScalar } from '../schema/scalars';
 import { llmService, LLMError } from '../../services/llm';
+import { JobService } from '../../services/jobService';
 import { GraphQLError } from 'graphql';
+import { Category, Trait } from '../../services/storyService';
+import { GeneratedQuestion, ResolvedGeneratedQuestion } from '../../services/llm/types';
 
 const storyService = new StoryService();
 const categoryService = new CategoryService();
 const traitService = new TraitService();
 const questionService = new QuestionService();
 const recordingService = new RecordingService();
+const jobService = new JobService();
 
 // Helper function to convert category names to Category objects
-async function resolveSuggestedCategories(categoryNames: string[]): Promise<any[]> {
+async function resolveSuggestedCategories(categoryNames: string[]): Promise<Category[]> {
   const allCategories = await categoryService.getAllCategories();
   return categoryNames
     .map(name => allCategories.find(cat => 
       cat.name.toLowerCase() === name.toLowerCase()
     ))
-    .filter(Boolean);
+    .filter((cat): cat is Category => cat !== null);
 }
 
 // Helper function to convert trait names to Trait objects
-async function resolveSuggestedTraits(traitNames: string[]): Promise<any[]> {
+async function resolveSuggestedTraits(traitNames: string[]): Promise<Trait[]> {
   const allTraits = await traitService.getAllTraits();
   return traitNames
     .map(name => allTraits.find(trait => 
       trait.name.toLowerCase() === name.toLowerCase()
     ))
-    .filter(Boolean);
+    .filter((trait): trait is Trait => trait !== null);
 }
 
 export const resolvers = {
@@ -72,6 +76,9 @@ export const resolvers = {
     recordingsByQuestion: async (_: any, { questionId }: { questionId: string }) => {
       return recordingService.getRecordingsByQuestion(questionId);
     },
+    questionsForCompany: async (_: any, { company }: { company: string }) => {
+      return jobService.getQuestionsForCompany(company);
+    },
     
     // Question Generation
     generateQuestions: async (_: any, { input }: { input: any }, context: any) => {
@@ -81,18 +88,22 @@ export const resolvers = {
             extensions: { code: 'LLM_NOT_CONFIGURED' }
           });
         }
-
-        const result = await llmService.generateQuestions(input, context.llmContext);
         
-        // Resolve category and trait names to actual objects
-        const questionsWithResolvedRefs = await Promise.all(
-          result.questions.map(async (q) => ({
-            ...q,
-            suggestedCategories: await resolveSuggestedCategories(q.suggestedCategories),
-            suggestedTraits: await resolveSuggestedTraits(q.suggestedTraits)
-          }))
-        );
+        const result = await llmService.generateQuestions(input, context.llmContext);
 
+        const questionsWithResolvedRefs: ResolvedGeneratedQuestion[] = await Promise.all(
+          result.questions.map(async (q: ResolvedGeneratedQuestion) => {
+            const resolvedCategories = q.suggestedCategories;
+            const resolvedTraits = q.suggestedTraits;
+            
+            return {
+              ...q,
+              suggestedCategories: resolvedCategories,
+              suggestedTraits: resolvedTraits,
+            };
+          })
+        );
+        
         return {
           ...result,
           questions: questionsWithResolvedRefs
@@ -127,7 +138,6 @@ export const resolvers = {
 
     recordings: async (_: any, { where, orderBy }: { where?: any; orderBy?: string }) => {
       const filters: any = {};
-      
       if (where) {
         if (where.createdAt_gte) filters.startDate = new Date(where.createdAt_gte);
         if (where.createdAt_lte) filters.endDate = new Date(where.createdAt_lte);
@@ -151,7 +161,6 @@ export const resolvers = {
     },
     createCustomQuestion: async (_: any, { input }: { input: any }) => {
       const { text, categoryIds, traitIds, difficulty } = input;
-      
       // Validation
       if (text.trim().length < 20) {
         throw new GraphQLError('Question must be at least 20 characters long', {
@@ -212,7 +221,6 @@ export const resolvers = {
 
     updateQuestionFull: async (_: any, { id, input }: { id: string; input: any }) => {
       const { text, difficulty, categoryIds, traitIds } = input;
-      
       // Validation
       if (!text || text.trim().length < 20) {
         throw new GraphQLError('Question must be at least 20 characters long', {
@@ -284,6 +292,12 @@ export const resolvers = {
       return traitService.getTraitQuestions(parent.id);
     }
   },
+  
+  Job: {
+    questions: async (parent: { id: string }) => {
+      return jobService.getJobQuestions(parent.id);
+    }
+  },
 
   Question: {
     categories: async (parent: { id: string }) => {
@@ -298,6 +312,9 @@ export const resolvers = {
     matchingStories: async (parent: { id: string }, { limit }: { limit?: number }) => {
       const intLimit = limit ? Math.floor(Number(limit)) : 3;
       return storyService.findMatchingStories(parent.id, intLimit);
+    },
+    job: async (parent: { id: string }) => {
+      return questionService.getQuestionJob(parent.id);
     }
   },
 

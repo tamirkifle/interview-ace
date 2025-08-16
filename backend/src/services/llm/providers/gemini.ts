@@ -20,14 +20,17 @@ export class GeminiProvider extends BaseLLMProvider {
       const { systemPrompt, userPrompt } = await this.buildPrompts(request);
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
-
+      // console.log({prompt})
       const result = await genModel.generateContent(prompt);
       const response = await result.response;
       const content = response.text();
+      // console.log({content})
 
       return this.parseQuestionResponse(content);
 
     } catch (error: any) {
+      console.log({error})
+
       if (error instanceof LLMError) throw error;
       
       if (error.message?.includes('API_KEY_INVALID')) {

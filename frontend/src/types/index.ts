@@ -1,3 +1,5 @@
+import { APIKeys, APIKeyStatus, LLMProvider, TranscriptionProvider, ModelInfo, ModelsCache } from './apiKeys';
+
 export interface Category {
   id: string;
   name: string;
@@ -9,6 +11,14 @@ export interface Trait {
   id: string;
   name: string;
   description: string;
+}
+
+export interface Job {
+  id: string;
+  company: string;
+  title: string;
+  description: string;
+  questions: Question[];
 }
 
 export interface Recording {
@@ -57,8 +67,10 @@ export interface Question {
   categories: Category[];
   traits: Trait[];
   recordings?: Recording[];
-  source?: string;  
-} 
+  source?: string;
+  reasoning?: string;
+  job?: Job;
+}
 
 export interface StoryMatch {
   story: {
@@ -79,6 +91,7 @@ export interface GeneratedQuestion {
   suggestedTraits: Trait[];
   difficulty: string;
   reasoning: string;
+  id?: string;
 }
 
 export interface QuestionGenerationResult {
@@ -92,6 +105,8 @@ export interface GenerateQuestionsInput {
   categoryIds?: string[];
   traitIds?: string[];
   jobDescription?: string;
+  company?: string;
+  title?: string;
   count?: number;
   difficulty?: string;
 }

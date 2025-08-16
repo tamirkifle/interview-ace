@@ -1,6 +1,6 @@
 import { neo4jConnection } from '../db/neo4j';
 import { Record } from 'neo4j-driver';
-import { Question, Category, Trait, Recording } from './storyService';
+import { Question, Category, Trait, Recording, Job } from './storyService';
 import { v4 as uuidv4 } from 'uuid';
 
 export class QuestionService {
@@ -25,7 +25,6 @@ export class QuestionService {
         MATCH (q:Question {id: $id})
         RETURN q
       `, { id });
-      
       if (result.records.length === 0) {
         return null;
       }
@@ -44,7 +43,6 @@ export class QuestionService {
         RETURN c
         ORDER BY c.name
       `, { questionId });
-      
       return result.records.map((record: Record) => record.get('c').properties);
     } finally {
       await session.close();
@@ -59,8 +57,26 @@ export class QuestionService {
         RETURN t
         ORDER BY t.name
       `, { questionId });
-      
       return result.records.map((record: Record) => record.get('t').properties);
+    } finally {
+      await session.close();
+    }
+  }
+  
+  async getQuestionJob(questionId: string): Promise<Job | null> {
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(
+        `
+        MATCH (q:Question {id: $questionId})-[:GENERATED_FOR_JOB]->(j:Job)
+        RETURN j
+        `,
+        { questionId }
+      );
+      if (result.records.length === 0) {
+        return null;
+      }
+      return result.records[0].get('j').properties;
     } finally {
       await session.close();
     }
@@ -74,7 +90,6 @@ export class QuestionService {
         RETURN r
         ORDER BY r.createdAt DESC
       `, { questionId });
-      
       return result.records.map((record: Record) => record.get('r').properties);
     } finally {
       await session.close();
@@ -93,7 +108,6 @@ export class QuestionService {
         `,
         { text }
       );
-  
       if (result.records.length === 0) {
         return null;
       }
@@ -111,13 +125,14 @@ export class QuestionService {
     difficulty: string;
     commonality: number;
     source?: string;
+    reasoning?: string;
   }): Promise<Question> {
     const session = await neo4jConnection.getSession();
     try {
       const id = uuidv4();
       const now = new Date().toISOString();
-  
-      const result = await session.run(
+      
+      const createResult = await session.run(
         `
         CREATE (q:Question {
           id: $id,
@@ -125,27 +140,10 @@ export class QuestionService {
           difficulty: $difficulty,
           commonality: $commonality,
           source: $source,
+          reasoning: $reasoning,
           createdAt: $createdAt,
           updatedAt: $updatedAt
         })
-        WITH q
-        
-        // Connect to categories
-        UNWIND CASE WHEN size($categoryIds) > 0 THEN $categoryIds ELSE [null] END AS categoryId
-        WITH q, categoryId
-        WHERE categoryId IS NOT NULL
-        MATCH (c:Category {id: categoryId})
-        CREATE (q)-[:TESTS_FOR]->(c)
-        
-        WITH DISTINCT q
-        
-        // Connect to traits  
-        UNWIND CASE WHEN size($traitIds) > 0 THEN $traitIds ELSE [null] END AS traitId
-        WITH q, traitId
-        WHERE traitId IS NOT NULL
-        MATCH (t:Trait {id: traitId})
-        CREATE (q)-[:TESTS_FOR]->(t)
-        
         RETURN q
         `,
         {
@@ -154,14 +152,57 @@ export class QuestionService {
           difficulty: input.difficulty,
           commonality: input.commonality,
           source: input.source || 'custom',
+          reasoning: input.reasoning,
           createdAt: now,
           updatedAt: now,
-          categoryIds: input.categoryIds,
-          traitIds: input.traitIds
         }
       );
-  
-      return result.records[0].get('q').properties;
+      
+      const newQuestion = createResult.records[0].get('q').properties;
+      
+      // Connect to categories
+      if (input.categoryIds.length > 0) {
+        await session.run(
+          `
+          MATCH (q:Question {id: $id})
+          UNWIND $categoryIds AS categoryId
+          MATCH (c:Category {id: categoryId})
+          CREATE (q)-[:TESTS_FOR]->(c)
+          `,
+          { id, categoryIds: input.categoryIds }
+        );
+      }
+      
+      // Connect to traits
+      if (input.traitIds.length > 0) {
+        await session.run(
+          `
+          MATCH (q:Question {id: $id})
+          UNWIND $traitIds AS traitId
+          MATCH (t:Trait {id: traitId})
+          CREATE (q)-[:TESTS_FOR]->(t)
+          `,
+          { id, traitIds: input.traitIds }
+        );
+      }
+        
+      return newQuestion;
+    } finally {
+      await session.close();
+    }
+  }
+
+  async linkQuestionToJob(questionId: string, jobId: string): Promise<void> {
+    const session = await neo4jConnection.getSession();
+    try {
+      await session.run(
+        `
+        MATCH (q:Question {id: $questionId})
+        MATCH (j:Job {id: $jobId})
+        MERGE (q)-[:GENERATED_FOR_JOB]->(j)
+        `,
+        { questionId, jobId }
+      );
     } finally {
       await session.close();
     }
@@ -179,7 +220,6 @@ export class QuestionService {
         `,
         { id, text }
       );
-  
       if (result.records.length === 0) {
         throw new Error('Question not found');
       }
@@ -202,7 +242,6 @@ export class QuestionService {
         `,
         { ids }
       );
-  
       return result.records[0].get('deletedCount').toNumber();
     } finally {
       await session.close();
@@ -234,7 +273,6 @@ export class QuestionService {
           difficulty: input.difficulty
         }
       );
-  
       // Then, create new relationships
       if (input.categoryIds.length > 0) {
         await session.run(
@@ -268,7 +306,6 @@ export class QuestionService {
         `,
         { id }
       );
-  
       if (result.records.length === 0) {
         throw new Error('Question not found');
       }
@@ -278,4 +315,4 @@ export class QuestionService {
       await session.close();
     }
   }
-} 
+}

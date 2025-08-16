@@ -51,29 +51,31 @@ export abstract class BaseLLMProvider implements LLMProvider {
   }> {
     const categories = await this.promptGenerator.getCategories(request.categoryIds || []);
     const traits = await this.promptGenerator.getTraits(request.traitIds || []);
-  
     const systemPrompt = this.promptGenerator.buildSystemPrompt();
     const userPrompt = await this.promptGenerator.buildUserPrompt(
       request,
       categories,
       traits
     );
-  
     return { systemPrompt, userPrompt };
   }
 
   protected parseQuestionResponse(responseText: string): GeneratedQuestion[] {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/) || responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
+      
+      // First, check for and strip markdown code block wrapping
+      const cleanedResponse = responseText.replace(/```json\n|```/g, '').trim();
+      console.log('cleanedResponse')
+      console.log(cleanedResponse)
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(cleanedResponse);
+      console.log('parsed')
+      console.log(parsed)
+
       const questions = Array.isArray(parsed) ? parsed : [parsed];
-
+      
       return questions.map((q: any) => ({
+        // id: q.id,
         text: q.text || q.question || '',
         suggestedCategories: Array.isArray(q.suggestedCategories) ? q.suggestedCategories : 
                            Array.isArray(q.categories) ? q.categories : [],
@@ -81,8 +83,9 @@ export abstract class BaseLLMProvider implements LLMProvider {
                         Array.isArray(q.traits) ? q.traits : [],
         difficulty: (q.difficulty || 'medium').toLowerCase() as 'easy' | 'medium' | 'hard',
         reasoning: q.reasoning || ''
-      })).filter((q: GeneratedQuestion) => q.text); // Filter out any empty questions
+      })).filter((q: GeneratedQuestion) => q.text);
     } catch (error) {
+      console.log({error})
       throw new LLMError(
         'Failed to parse question response',
         'PROVIDER_ERROR',

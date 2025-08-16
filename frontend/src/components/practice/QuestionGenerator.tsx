@@ -18,6 +18,8 @@ export const QuestionGenerator = ({ onQuestionsGenerated, isConfigured }: Questi
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [jobDescription, setJobDescription] = useState('');
+  const [company, setCompany] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<'mixed' | 'easy' | 'medium' | 'hard'>('mixed');
   
@@ -48,10 +50,12 @@ export const QuestionGenerator = ({ onQuestionsGenerated, isConfigured }: Questi
       input.categoryIds = selectedCategories;
       input.traitIds = selectedTraits;
     } else {
-      if (!jobDescription.trim()) {
+      if (!jobDescription.trim() || !company.trim() || !jobTitle.trim()) {
         return;
       }
       input.jobDescription = jobDescription.trim();
+      input.company = company.trim();
+      input.title = jobTitle.trim();
     }
 
     generateQuestions({ variables: { input } });
@@ -60,7 +64,7 @@ export const QuestionGenerator = ({ onQuestionsGenerated, isConfigured }: Questi
   // Check if generation is valid
   const canGenerate = activeTab === 'categories' 
     ? (selectedCategories.length > 0 || selectedTraits.length > 0)
-    : jobDescription.trim().length > 0;
+    : (jobDescription.trim().length > 0 && company.trim().length > 0 && jobTitle.trim().length > 0);
 
   if (!isConfigured) {
     return (
@@ -158,20 +162,48 @@ export const QuestionGenerator = ({ onQuestionsGenerated, isConfigured }: Questi
 
         {/* Job Description */}
         {activeTab === 'job' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Job Description
-            </label>
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value.slice(0, 5000))}
-              placeholder="Paste the job description here..."
-              className="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 resize-none"
-              maxLength={5000}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {jobDescription.length}/5000 characters
-            </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company Name *
+              </label>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value.slice(0, 100))}
+                placeholder="e.g., Google"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Title *
+              </label>
+              <input
+                type="text"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value.slice(0, 100))}
+                placeholder="e.g., Senior Software Engineer"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Description *
+              </label>
+              <textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value.slice(0, 5000))}
+                placeholder="Paste the job description here..."
+                className="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 resize-none"
+                maxLength={5000}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {jobDescription.length}/5000 characters
+              </p>
+            </div>
           </div>
         )}
 

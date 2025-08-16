@@ -31,6 +31,13 @@ export interface Trait {
   updatedAt: Date;
 }
 
+export interface Job {
+  id: string;
+  company: string;
+  title: string;
+  description: string;
+}
+
 export interface Question {
   id: string;
   text: string;
@@ -38,6 +45,9 @@ export interface Question {
   commonality: number;
   createdAt: Date;
   updatedAt: Date;
+  source?: string;
+  reasoning?: string;
+  job?: Job;
 }
 
 export interface Recording {
@@ -82,7 +92,6 @@ export class StoryService {
         MATCH (s:Story {id: $id})
         RETURN s
       `, { id });
-      
       if (result.records.length === 0) {
         return null;
       }
@@ -101,7 +110,6 @@ export class StoryService {
         RETURN c
         ORDER BY c.name
       `, { storyId });
-      
       return result.records.map((record: Record) => 
         processRecordProperties(record.get('c').properties)
       );
@@ -118,7 +126,6 @@ export class StoryService {
         RETURN t
         ORDER BY t.name
       `, { storyId });
-      
       return result.records.map((record: Record) => 
         processRecordProperties(record.get('t').properties)
       );
@@ -135,7 +142,6 @@ export class StoryService {
         RETURN r
         ORDER BY r.createdAt DESC
       `, { storyId });
-      
       return result.records.map((record: Record) => 
         processRecordProperties(record.get('r').properties)
       );
@@ -148,7 +154,6 @@ export class StoryService {
     const session = await neo4jConnection.getSession();
     try {
       const intLimit = Math.floor(Math.max(1, Number(limit)));
-      
       const result = await session.run(`
         // Get the question with explicit index hint
         MATCH (q:Question {id: $questionId})
@@ -174,7 +179,7 @@ export class StoryService {
         OPTIONAL MATCH (s)-[:BELONGS_TO]->(sc:Category)
         OPTIONAL MATCH (s)-[:DEMONSTRATES]->(st:Trait)
         WITH q, s, questionCategories, questionTraits,
-             collect(DISTINCT sc) as storyCategories, collect(DISTINCT st) as storyTraits
+              collect(DISTINCT sc) as storyCategories, collect(DISTINCT st) as storyTraits
         
         // Calculate intersections
         WITH q, s, questionCategories, questionTraits, storyCategories, storyTraits,
@@ -205,7 +210,6 @@ export class StoryService {
         ORDER BY relevanceScore DESC, categoryMatches DESC, traitMatches DESC
         LIMIT toInteger($limit)
       `, { questionId, limit: intLimit });
-      
       return result.records.map((record: Record) => ({
         story: processRecordProperties(record.get('s').properties),
         relevanceScore: record.get('relevanceScore'),
@@ -233,7 +237,6 @@ export class StoryService {
     try {
       const id = `story-${Date.now()}`;
       const now = new Date().toISOString();
-      
       const result = await session.run(`
         CREATE (s:Story {
           id: $id,
@@ -300,7 +303,6 @@ export class StoryService {
         RETURN q
         ORDER BY q.text
       `, { storyId });
-      
       return result.records.map((record: Record) => 
         processRecordProperties(record.get('q').properties)
       );
