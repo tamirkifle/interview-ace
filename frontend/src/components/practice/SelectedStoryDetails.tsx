@@ -3,6 +3,8 @@ import { Eye, EyeOff, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import { GET_STORIES } from '../../graphql/queries';
 import { LoadingSpinner, Badge } from '../ui';
+import { CollapsibleText } from '../ui/CollapsibleText';
+import { cn } from '../../utils/cn';
 
 interface SelectedStoryDetailsProps {
   storyId: string;
@@ -10,7 +12,6 @@ interface SelectedStoryDetailsProps {
 
 export const SelectedStoryDetails = ({ storyId }: SelectedStoryDetailsProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
   const { data, loading } = useQuery(GET_STORIES);
   
   if (loading) {
@@ -72,22 +73,22 @@ export const SelectedStoryDetails = ({ storyId }: SelectedStoryDetailsProps) => 
         <div className="space-y-4 mt-4 pt-4 border-t border-blue-200">
           <div>
             <h6 className="text-sm font-medium text-gray-700 mb-1">Situation</h6>
-            <p className="text-sm text-gray-600">{story.situation}</p>
+            <CollapsibleText text={story.situation} />
           </div>
           
           <div>
             <h6 className="text-sm font-medium text-gray-700 mb-1">Task</h6>
-            <p className="text-sm text-gray-600">{story.task}</p>
+            <CollapsibleText text={story.task} />
           </div>
-          
+        
           <div>
             <h6 className="text-sm font-medium text-gray-700 mb-1">Action</h6>
-            <p className="text-sm text-gray-600">{story.action}</p>
+            <CollapsibleText text={story.action} />
           </div>
           
           <div>
             <h6 className="text-sm font-medium text-gray-700 mb-1">Result</h6>
-            <p className="text-sm text-gray-600">{story.result}</p>
+            <CollapsibleText text={story.result} />
           </div>
 
           {/* Traits */}

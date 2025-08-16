@@ -3,6 +3,8 @@ import { useQuery } from '@apollo/client';
 import { BookOpen, Target, TrendingUp, Check, ChevronDown, ChevronUp, Folder, Tag } from 'lucide-react';
 import { GET_MATCHING_STORIES, GET_STORIES } from '../../graphql/queries';
 import { LoadingSpinner, Badge } from '../ui';
+import { CollapsibleText } from '../ui/CollapsibleText';
+import { cn } from '../../utils/cn';
 
 interface MatchingStoriesProps {
   questionId: string;
@@ -11,13 +13,12 @@ interface MatchingStoriesProps {
 }
 
 export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: MatchingStoriesProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
   const { data: matchingData, loading: matchingLoading } = useQuery(GET_MATCHING_STORIES, {
     variables: { questionId, limit: 10 },
     skip: !questionId,
   });
-
   const { data: allStoriesData, loading: allStoriesLoading } = useQuery(GET_STORIES);
 
   const matchingStories = matchingData?.question?.matchingStories || [];
@@ -25,7 +26,6 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
 
   // Filter relevant stories (score > 0)
   const relevantStories = matchingStories.filter((ms: any) => ms.relevanceScore > 0);
-  
   // Get stories that aren't in the relevant results
   const relevantStoryIds = new Set(relevantStories.map((ms: any) => ms.story.id));
   const otherStories = allStories.filter((story: any) => !relevantStoryIds.has(story.id));
@@ -40,7 +40,6 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
 
   const MatchingStoriesCard = ({ story, relevanceScore, matchedCategories = [], matchedTraits = [], isMatched = false }: any) => {
     const isSelected = selectedStoryId === story.id;
-    
     // Create sets of matched IDs for easy lookup
     const matchedCategoryIds = new Set(matchedCategories.map((c: any) => c.id));
     const matchedTraitIds = new Set(matchedTraits.map((t: any) => t.id));
@@ -56,19 +55,15 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
     const situationPreview = story.situation.length > 150 
       ? `${story.situation.substring(0, 150)}...` 
       : story.situation;
-  
+
     return (
       <div
         onClick={() => handleStoryClick(story.id)}
-        className={`
-          flex flex-col bg-white rounded-lg border p-6 
-          transition-all duration-200 ease-out cursor-pointer
-          hover:shadow-md hover:border-gray-300 hover:-translate-y-1
-          ${isSelected 
-            ? 'border-primary-500 bg-primary-50 shadow-sm' 
-            : 'border-gray-200'
-          }
-        `}
+        className={cn(
+          "flex flex-col bg-white rounded-lg border p-6 transition-all duration-200 ease-out cursor-pointer",
+          "hover:shadow-md hover:border-gray-300 hover:-translate-y-1",
+          isSelected ? "border-primary-500 bg-primary-50 shadow-sm" : "border-gray-200"
+        )}
       >
         {/* Header with Title and Relevance Score */}
         <div className="flex items-start justify-between mb-3">
@@ -186,7 +181,7 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
             {(matchedTraitsList.length + unmatchedTraits.length) > 4 && (
               <Badge variant="outline" size="xs" className="flex items-center gap-1">
                 <Tag className="w-2.5 h-2.5" />
-                +{(matchedTraitsList.length + unmatchedTraits.length) - 4} more
+                +{((matchedTraitsList.length + unmatchedTraits.length) - 4)} more
               </Badge>
             )}
           </div>
@@ -241,97 +236,121 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
 
   return (
     <div className="bg-gray-50 rounded-lg p-6">
-      {/* Relevant Stories Section */}
-      <div className="mb-6">
-        <div className="flex items-center mb-4">
-          <Target className="w-5 h-5 text-primary-600 mr-2" />
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center">
+          <BookOpen className="w-5 h-5 text-gray-600 mr-2" />
           <h3 className="text-lg font-medium text-gray-900">
-            Relevant Stories
+            Matching Stories
           </h3>
           <span className="text-sm text-gray-500 ml-2">
-            ({relevantStories.length} found)
+            ({relevantStories.length} found, {otherStories.length} others)
           </span>
         </div>
-
-        {relevantStories.length > 0 ? (
-          <div className="space-y-3">
-            {relevantStories.map(({ story, relevanceScore, matchedCategories, matchedTraits }: any) => (
-              <MatchingStoriesCard
-                key={story.id}
-                story={story}
-                relevanceScore={relevanceScore}
-                matchedCategories={matchedCategories}
-                matchedTraits={matchedTraits}
-                isMatched={true}
-              />
-            ))}
-          </div>
+        {isExpanded ? (
+          <ChevronUp className="w-5 h-5 text-gray-400" />
         ) : (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <Target className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="ml-3">
-                <h4 className="text-sm font-medium text-amber-800">
-                  No matching stories found
-                </h4>
-                <p className="text-sm text-amber-700 mt-1">
-                  This question doesn't have stories that share categories or traits yet.
-                </p>
-                <div className="mt-2">
-                  <p className="text-xs text-amber-600">
-                    💡 <strong>Tip:</strong> Create stories with similar categories to get matches
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ChevronDown className="w-5 h-5 text-gray-400" />
         )}
-      </div>
+      </button>
 
-      {/* Other Stories Dropdown Section */}
-      <div>
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center">
-            <BookOpen className="w-5 h-5 text-gray-600 mr-2" />
-            <h3 className="text-lg font-medium text-gray-900">
-              Other Stories
-            </h3>
-            <span className="text-sm text-gray-500 ml-2">
-              ({otherStories.length} available)
-            </span>
-          </div>
-          
-          {isDropdownOpen ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
-          )}
-        </button>
+      {isExpanded && (
+        <div className="mt-6 space-y-6">
+          {/* Relevant Stories Section */}
+          <div>
+            <div className="flex items-center mb-4">
+              <Target className="w-5 h-5 text-primary-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">
+                Relevant Stories
+              </h3>
+              <span className="text-sm text-gray-500 ml-2">
+                ({relevantStories.length} found)
+              </span>
+            </div>
 
-        {isDropdownOpen && (
-          <div className="mt-3 space-y-3 max-h-96 overflow-y-auto">
-            {otherStories.length > 0 ? (
-              otherStories.map((story: any) => (
-                <MatchingStoriesCard
-                  key={story.id}
-                  story={story}
-                  isMatched={false}
-                />
-              ))
+            {relevantStories.length > 0 ? (
+              <div className="space-y-3">
+                {relevantStories.map(({ story, relevanceScore, matchedCategories, matchedTraits }: any) => (
+                  <MatchingStoriesCard
+                    key={story.id}
+                    story={story}
+                    relevanceScore={relevanceScore}
+                    matchedCategories={matchedCategories}
+                    matchedTraits={matchedTraits}
+                    isMatched={true}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="p-4 text-center text-gray-500">
-                <BookOpen className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">All your stories are already shown above</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Target className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="ml-3">
+                    <h4 className="text-sm font-medium text-amber-800">
+                      No matching stories found
+                    </h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      This question doesn't have stories that share categories or traits yet.
+                    </p>
+                    <div className="mt-2">
+                      <p className="text-xs text-amber-600">
+                        💡 <strong>Tip:</strong> Create stories with similar categories to get matches
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Other Stories Dropdown Section */}
+          <div>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <BookOpen className="w-5 h-5 text-gray-600 mr-2" />
+                <h3 className="text-lg font-medium text-gray-900">
+                  Other Stories
+                </h3>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({otherStories.length} available)
+                </span>
+              </div>
+              
+              {isDropdownOpen ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+
+            {isDropdownOpen && (
+              <div className="mt-3 space-y-3 max-h-96 overflow-y-auto">
+                {otherStories.length > 0 ? (
+                  otherStories.map((story: any) => (
+                    <MatchingStoriesCard
+                      key={story.id}
+                      story={story}
+                      isMatched={false}
+                    />
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    <BookOpen className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">All your stories are already shown above</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Selection Status */}
       {selectedStoryId ? (
