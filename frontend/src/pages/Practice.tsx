@@ -18,9 +18,9 @@ export const Practice = () => {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [activeTab, setActiveTab] = useState<'library' | 'practice' | 'generate' | 'custom'>('library');
+  const [questionLimit, setQuestionLimit] = useState<number | 'all'>(5);
 
   const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
-
   const questions = data?.questions || [];
   const apiKeyStatus = getAPIKeyStatus();
   const isLLMConfigured = apiKeyStatus.llm.available;
@@ -28,7 +28,8 @@ export const Practice = () => {
   const startPracticeSession = () => {
     // Shuffle questions for variety
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    setSessionQuestions(shuffled);
+    const questionsForSession = questionLimit === 'all' ? shuffled : shuffled.slice(0, questionLimit);
+    setSessionQuestions(questionsForSession);
     setIsSessionActive(true);
   };
 
@@ -63,7 +64,6 @@ export const Practice = () => {
       categories: question.suggestedCategories,
       traits: question.suggestedTraits
     };
-    
     setSessionQuestions([practiceQuestion]);
     setIsSessionActive(true);
     setGenerationResult(null);
@@ -263,17 +263,34 @@ export const Practice = () => {
                       Practice Interview Questions
                     </h2>
                     <p className="text-gray-600 mb-8 max-w-xl mx-auto">
-                      Simulate a real interview experience with randomly selected questions. 
-                      Practice your responses and get matched with relevant stories from your collection.
+                      Simulate a real interview experience with randomly selected questions. Practice your responses and get matched with relevant stories from your collection.
                     </p>
                     
+                    {/* New dropdown menu for question limit */}
+                    <div className="flex items-center justify-center mb-6 space-x-4">
+                      <label htmlFor="question-limit" className="text-sm font-medium text-gray-700">
+                        Questions per session:
+                      </label>
+                      <select
+                        id="question-limit"
+                        value={questionLimit}
+                        onChange={(e) => setQuestionLimit(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value={5}>5 Questions</option>
+                        <option value={10}>10 Questions</option>
+                        <option value={15}>15 Questions</option>
+                        <option value="all">All ({questions.length})</option>
+                      </select>
+                    </div>
+
                     {/* Quick Stats */}
                     <div className="grid grid-cols-3 gap-4 mb-8 max-w-md mx-auto">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-gray-900">
                           {questions.length}
                         </div>
-                        <div className="text-xs text-gray-500">Questions</div>
+                        <div className="text-xs text-gray-500">Total Questions</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-gray-900">
