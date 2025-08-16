@@ -551,6 +551,65 @@ export const resolvers = {
       } finally {
         await session.close();
       }
+    },
+    // Add dynamic source info
+    sourceInfo: async (parent: { id: string, source?: string }) => {
+      const session = await neo4jConnection.getSession();
+      try {
+        // Check for job relationship
+        const jobResult = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(j:Job)
+          RETURN j.company + ' - ' + j.title as name, 'job' as type
+        `, { id: parent.id });
+        
+        if (jobResult.records.length > 0) {
+          return {
+            type: 'job',
+            name: jobResult.records[0].get('name'),
+            displayName: jobResult.records[0].get('name')
+          };
+        }
+
+        // Check for experience relationship
+        const expResult = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(e:Experience)
+          RETURN e.id as name, 'experience' as type
+        `, { id: parent.id });
+        
+        if (expResult.records.length > 0) {
+          const experienceName = expResult.records[0].get('name').replace(/_/g, ' ');
+          return {
+            type: 'experience',
+            name: expResult.records[0].get('name'),
+            displayName: experienceName
+          };
+        }
+
+        // Check for project relationship
+        const projResult = await session.run(`
+          MATCH (q:Question {id: $id})-[:TESTS_FOR]->(p:Project)
+          RETURN p.id as name, 'project' as type
+        `, { id: parent.id });
+        
+        if (projResult.records.length > 0) {
+          const projectName = projResult.records[0].get('name').replace(/_/g, ' ');
+          return {
+            type: 'project',
+            name: projResult.records[0].get('name'),
+            displayName: projectName
+          };
+        }
+
+        // Fallback to source field
+        const source = parent.source || 'generated';
+        return {
+          type: source,
+          name: source,
+          displayName: source === 'seeded' ? 'Generated' : source.charAt(0).toUpperCase() + source.slice(1)
+        };
+      } finally {
+        await session.close();
+      }
     }
   },
 

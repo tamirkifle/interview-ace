@@ -64,6 +64,7 @@ export const typeDefs = gql`
     questions: [Question!]!
   }
 
+
   type Question {
     id: ID!
     text: String!
@@ -73,6 +74,7 @@ export const typeDefs = gql`
     updatedAt: DateTime!
     source: String
     reasoning: String
+    sourceInfo: SourceInfo!
     categories: [Category!]!
     traits: [Trait!]!
     recordings: [Recording!]!
@@ -254,5 +256,11 @@ export const typeDefs = gql`
     retryTranscription(id: ID!): Recording!
     processResume(input: ProcessResumeInput!): ProcessResumeResult!
     generateResumeQuestions(input: GenerateResumeQuestionsInput!): QuestionGenerationResult!
+  }
+
+  type SourceInfo {
+    type: String!
+    name: String!
+    displayName: String!
   }
 `;

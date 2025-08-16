@@ -19,7 +19,7 @@ const variantClasses = {
   default: 'bg-gray-100 text-gray-800',
   outline: 'border border-gray-300 text-gray-700 bg-white',
   colored: '', // Will be set dynamically
-  square: 'border border-gray-300 text-gray-700 bg-white rounded-0'
+  square: 'border border-gray-300 text-gray-700 bg-white rounded-0 py-1 px-1'
 };
 
 export const Badge = ({ 
@@ -43,6 +43,9 @@ export const Badge = ({
     else if (variant === 'square') {
       return {
         borderRadius: 0,
+        backgroundColor: `${color}15`,
+        color: color,
+        border: `1px solid ${color}30`,
       };
     }
     return undefined;

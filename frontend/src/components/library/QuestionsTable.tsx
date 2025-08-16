@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { GET_QUESTIONS, GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question, Job } from '../../types';
-import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X } from 'lucide-react';
+import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2 } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
+import { CollapsibleText } from '../ui/CollapsibleText';
 import { format, parseISO, isValid } from 'date-fns';
 
 type SortField = 'text' | 'createdAt' | 'recordings' | 'difficulty';
 type SortOrder = 'asc' | 'desc';
-type FilterSource = 'all' | 'generated' | 'custom';
+type FilterSource = 'all' | 'generated' | 'custom' | 'job' | 'experience' | 'project';
 
 export const QuestionsTable = () => {
   const navigate = useNavigate();
@@ -18,11 +19,13 @@ export const QuestionsTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [companyFilter, setCompanyFilter] = useState<string>('');
+  const [jobTitleFilter, setJobTitleFilter] = useState<string>('');
   const [sourceFilter, setSourceFilter] = useState<FilterSource>('all');
   const [hasRecordingsFilter, setHasRecordingsFilter] = useState<boolean | null>(null);
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
   const { data, loading, error } = useQuery(GET_QUESTIONS, {
     fetchPolicy: 'cache-and-network'
   });
@@ -35,6 +38,7 @@ export const QuestionsTable = () => {
   const questions = data?.questions || [];
   const categories = categoriesData?.categories || [];
   
+  // Extract unique companies and job titles
   const uniqueCompanies: string[] = useMemo(() => {
     const companies = new Set<string>();
     questions.forEach((q: Question) => {
@@ -43,6 +47,16 @@ export const QuestionsTable = () => {
       }
     });
     return Array.from(companies).sort();
+  }, [questions]);
+
+  const uniqueJobTitles: string[] = useMemo(() => {
+    const titles = new Set<string>();
+    questions.forEach((q: Question) => {
+      if (q.job?.title) {
+        titles.add(q.job.title);
+      }
+    });
+    return Array.from(titles).sort();
   }, [questions]);
   
   const parseDate = (dateValue: any): Date => {
@@ -120,17 +134,23 @@ export const QuestionsTable = () => {
         q.categories.some((c: any) => c.id === categoryFilter)
       );
     }
-    
+
     if (companyFilter) {
       filtered = filtered.filter((q: Question) => 
         q.job?.company === companyFilter
       );
     }
 
+    if (jobTitleFilter) {
+      filtered = filtered.filter((q: Question) => 
+        q.job?.title === jobTitleFilter
+      );
+    }
+
     if (sourceFilter !== 'all') {
       filtered = filtered.filter((q: Question) => {
-        const source = q.source || 'generated';
-        return source === sourceFilter;
+        const sourceInfo = (q as any).sourceInfo;
+        return sourceInfo?.type === sourceFilter;
       });
     }
 
@@ -165,7 +185,7 @@ export const QuestionsTable = () => {
     });
 
     return filtered;
-  }, [questions, searchTerm, categoryFilter, companyFilter, sourceFilter, hasRecordingsFilter, sortField, sortOrder]);
+  }, [questions, searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
@@ -219,30 +239,74 @@ export const QuestionsTable = () => {
     }
   };
 
-  const getSourceBadge = (question: Question) => {
-    const source = question.source || 'generated';
-    const displaySource = source === 'seeded' ? 'generated' : source;
-    const colors: { [key: string]: string } = {
-      generated: 'bg-green-100 text-green-700',
-      custom: 'bg-purple-100 text-purple-700'
+  const getSourceBadge = (question: any) => {
+    const sourceInfo = question.sourceInfo;
+    if (!sourceInfo) return null;
+
+    const getSourceConfig = () => {
+      switch (sourceInfo.type) {
+        case 'job':
+          return {
+            icon: <Building2 className="w-3 h-3" />,
+            color: '#3B82F6',
+            label: sourceInfo.displayName
+          };
+        case 'experience':
+          return {
+            icon: <Briefcase className="w-3 h-3" />,
+            color: '#8B5CF6',
+            label: sourceInfo.displayName
+          };
+        case 'project':
+          return {
+            icon: <Code className="w-3 h-3" />,
+            color: '#10B981',
+            label: sourceInfo.displayName
+          };
+        case 'custom':
+          return {
+            icon: null,
+            color: '#F59E0B',
+            label: 'Custom'
+          };
+        default:
+          return {
+            icon: null,
+            color: '#6B7280',
+            label: 'Generated'
+          };
+      }
     };
+
+    const config = getSourceConfig();
+    
     return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${colors[displaySource] || colors.generated}`}>
-        {displaySource}
-      </span>
+      <Badge
+        variant="square"
+        color={config.color}
+        size="xs"
+        className="flex items-center gap-1"
+      >
+        {config.icon}
+        {config.label}
+      </Badge>
     );
   };
 
   const getDifficultyBadge = (difficulty: string) => {
     const colors: { [key: string]: string } = {
-      easy: 'bg-green-100 text-green-700',
-      medium: 'bg-yellow-100 text-yellow-700',
-      hard: 'bg-red-100 text-red-700'
+      easy: '#059669',
+      medium: '#EA580C',
+      hard: '#DC2626'
     };
     return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${colors[difficulty]}`}>
+      <Badge
+        variant="colored"
+        color={colors[difficulty]}
+        size="xs"
+      >
         {difficulty}
-      </span>
+      </Badge>
     );
   };
 
@@ -276,13 +340,13 @@ export const QuestionsTable = () => {
           </div>
         )}
         
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <input
             type="text"
             placeholder="Search questions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="md:col-span-2 lg:col-span-1 xl:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           
           <select 
@@ -295,7 +359,7 @@ export const QuestionsTable = () => {
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
-          
+
           <select 
             value={companyFilter}
             onChange={(e) => setCompanyFilter(e.target.value)}
@@ -308,13 +372,27 @@ export const QuestionsTable = () => {
           </select>
 
           <select 
+            value={jobTitleFilter}
+            onChange={(e) => setJobTitleFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">All Job Titles</option>
+            {uniqueJobTitles.map((title) => (
+              <option key={title} value={title}>{title}</option>
+            ))}
+          </select>
+
+          <select 
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value as FilterSource)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="all">All Sources</option>
-            <option value="generated">Generated</option>
             <option value="custom">Custom</option>
+            <option value="job">Job Description</option>
+            <option value="experience">Experience</option>
+            <option value="project">Project</option>
+            <option value="generated">Generated</option>
           </select>
 
           <select 
@@ -380,7 +458,7 @@ export const QuestionsTable = () => {
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job
+                  Source
                 </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
@@ -422,6 +500,18 @@ export const QuestionsTable = () => {
                   </td>
                   <td className="px-6 py-4 max-w-sm">
                     <p className="text-sm text-gray-900 mb-2">{question.text}</p>
+                    
+                    {/* AI Reasoning - Collapsible */}
+                    {(question as any).reasoning && (
+                      <div className="mb-2">
+                        <CollapsibleText 
+                          text={(question as any).reasoning} 
+                          wordLimit={15}
+                          className="text-xs text-blue-600 italic"
+                        />
+                      </div>
+                    )}
+                    
                     <div className="flex flex-wrap gap-1">
                       {question.categories.map((cat: any) => (
                         <Badge
@@ -449,14 +539,7 @@ export const QuestionsTable = () => {
                     {getDifficultyBadge(question.difficulty)}
                   </td>
                   <td className="px-6 py-4">
-                    {question.job ? (
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{question.job.company}</span>
-                        <span className="text-xs text-gray-500">{question.job.title}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">N/A</span>
-                    )}
+                    {getSourceBadge(question)}
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-900">

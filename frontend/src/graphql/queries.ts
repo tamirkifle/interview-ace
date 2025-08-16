@@ -67,6 +67,11 @@ export const GET_QUESTIONS = gql`
       updatedAt
       source
       reasoning
+      sourceInfo {
+        type
+        name
+        displayName
+      }
       categories {
         id
         name
