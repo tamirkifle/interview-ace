@@ -160,7 +160,7 @@ export const resolvers = {
       return recordingService.deleteRecording(id);
     },
     createCustomQuestion: async (_: any, { input }: { input: any }) => {
-      const { text, categoryIds, traitIds, difficulty } = input;
+      const { text, categoryIds, traitIds, difficulty, reasoning } = input;
       // Validation
       if (text.trim().length < 20) {
         throw new GraphQLError('Question must be at least 20 characters long', {
@@ -195,6 +195,7 @@ export const resolvers = {
         categoryIds: categoryIds || [],
         traitIds: traitIds || [],
         difficulty,
+        reasoning,
         commonality: 5, // Default commonality for custom questions
         source: 'custom' // Track that this was user-created
       });

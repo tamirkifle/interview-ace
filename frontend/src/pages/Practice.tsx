@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import { Play, Sparkles, BookOpen, Library, Plus } from 'lucide-react';
 import { GET_QUESTIONS } from '../graphql/queries';
+import { CREATE_CUSTOM_QUESTION } from '../graphql/mutations';
 import { LoadingSpinner } from '../components/ui';
 import { PracticeSession } from '../components/practice/PracticeSession';
 import { QuestionGenerator } from '../components/practice/QuestionGenerator';
@@ -25,8 +26,11 @@ export const Practice = () => {
   const apiKeyStatus = getAPIKeyStatus();
   const isLLMConfigured = apiKeyStatus.llm.available;
 
+  const [createCustomQuestion] = useMutation(CREATE_CUSTOM_QUESTION, {
+    refetchQueries: [{ query: GET_QUESTIONS }],
+  });
+
   const startPracticeSession = () => {
-    // Shuffle questions for variety
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
     const questionsForSession = questionLimit === 'all' ? shuffled : shuffled.slice(0, questionLimit);
     setSessionQuestions(questionsForSession);
@@ -46,14 +50,26 @@ export const Practice = () => {
     setGenerationResult(result);
   };
 
-  const handleSaveGeneratedQuestion = (question: ResolvedGeneratedQuestion) => {
-    // In a real implementation, this would save to the database
-    console.log('Saving question:', question);
-    // You would call a mutation here to save the question
+  const handleSaveGeneratedQuestion = async (question: ResolvedGeneratedQuestion) => {
+    try {
+      await createCustomQuestion({
+        variables: {
+          input: {
+            text: question.text,
+            difficulty: question.difficulty,
+            categoryIds: question.suggestedCategories.map(c => c.id),
+            traitIds: question.suggestedTraits.map(t => t.id),
+            reasoning: question.reasoning,
+          },
+        },
+      });
+      console.log('Question saved successfully!');
+    } catch (err) {
+      console.error('Failed to save generated question:', err);
+    }
   };
 
   const handleRecordAnswer = (question: ResolvedGeneratedQuestion) => {
-    // Convert generated question to regular question format and start practice session
     const practiceQuestion: Question = {
       id: question.id || `generated-${Date.now()}`,
       text: question.text,
@@ -346,10 +362,7 @@ export const Practice = () => {
                 <div className="max-w-3xl mx-auto">
                   <CustomQuestion
                     onQuestionCreated={(questionId) => {
-                      // Optionally switch to library tab to show the new question
                       setActiveTab('library');
-                      // Or start a practice session with the new question
-                      // You could fetch the question and start practice here
                     }}
                   />
                 </div>

@@ -94,6 +94,7 @@ export const typeDefs = gql`
 
   # Question Generation Types
   type GeneratedQuestion {
+    id: ID
     text: String!
     suggestedCategories: [Category!]!
     suggestedTraits: [Trait!]!
@@ -169,8 +170,9 @@ export const typeDefs = gql`
     categoryIds: [ID!]!
     traitIds: [ID!]!
     difficulty: String!
+    reasoning: String
   }
-
+    
   input UpdateQuestionInput {
     text: String!
     difficulty: String!
