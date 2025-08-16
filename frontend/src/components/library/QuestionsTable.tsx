@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { GET_QUESTIONS, GET_CATEGORIES } from '../../graphql/queries';
@@ -6,6 +6,7 @@ import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question, Job } from '../../types';
 import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2 } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
+import { Pagination } from '../ui/Pagination';
 import { CollapsibleText } from '../ui/CollapsibleText';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -25,6 +26,8 @@ export const QuestionsTable = () => {
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   
   const { data, loading, error } = useQuery(GET_QUESTIONS, {
     fetchPolicy: 'cache-and-network'
@@ -187,6 +190,17 @@ export const QuestionsTable = () => {
     return filtered;
   }, [questions, searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter, sortField, sortOrder]);
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedQuestions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedQuestions = filteredAndSortedQuestions.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter]);
+
   const handleSort = (field: SortField) => {
     if (field === sortField) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -197,10 +211,10 @@ export const QuestionsTable = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === filteredAndSortedQuestions.length) {
+    if (selectedIds.size === paginatedQuestions.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredAndSortedQuestions.map(q => q.id)));
+      setSelectedIds(new Set(paginatedQuestions.map(q => q.id)));
     }
   };
 
@@ -430,7 +444,7 @@ export const QuestionsTable = () => {
                 <th className="w-12 px-6 py-3">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === filteredAndSortedQuestions.length && filteredAndSortedQuestions.length > 0}
+                    checked={selectedIds.size === paginatedQuestions.length && paginatedQuestions.length > 0}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                   />
@@ -488,7 +502,7 @@ export const QuestionsTable = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAndSortedQuestions.map((question: Question) => (
+              {paginatedQuestions.map((question: Question) => (
                 <tr key={question.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <input
@@ -587,12 +601,31 @@ export const QuestionsTable = () => {
           </table>
         </div>
 
-        {filteredAndSortedQuestions.length === 0 && (
+        {paginatedQuestions.length === 0 && (
           <div className="text-center py-12">
             <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">No questions found</p>
+            {filteredAndSortedQuestions.length > 0 && (
+              <p className="text-sm text-gray-400 mt-2">
+                Try a different page or adjust your filters
+              </p>
+            )}
           </div>
         )}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredAndSortedQuestions.length}
+          onItemsPerPageChange={(newItemsPerPage) => {
+            setItemsPerPage(newItemsPerPage);
+            setCurrentPage(1); // Reset to first page when changing items per page
+          }}
+        />
+      )}
       </div>
     </div>
   );
