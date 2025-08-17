@@ -32,7 +32,7 @@ export const Practice = () => {
     updateRecording,
   } = usePersistentPracticeSession();
 
-  const questions = data?.questions || [];
+  const questions = data?.allQuestions || [];
 
   const handleStartNewSession = () => {
     const shuffled = [...questions].sort(() => Math.random() - 0.5);

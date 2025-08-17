@@ -29,7 +29,7 @@ export const EditQuestion = () => {
   });
 
   // Get the specific question
-  const question = data?.questions?.find((q: any) => q.id === id);
+  const question = data?.allQuestions?.find((q: any) => q.id === id);
 
   // Update mutation
   const [updateQuestion, { loading: updating }] = useMutation(UPDATE_QUESTION_FULL, {

@@ -1,5 +1,5 @@
 import { neo4jConnection } from '../db/neo4j';
-import { Record } from 'neo4j-driver';
+import { QueryResult, Record } from 'neo4j-driver';
 import { Question, Category, Trait, Recording, Job } from './storyService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -91,6 +91,123 @@ export class QuestionService {
         ORDER BY r.createdAt DESC
       `, { questionId });
       return result.records.map((record: Record) => record.get('r').properties);
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getQuestionsPaginated(options: {
+    limit: number;
+    offset: number;
+    filters?: {
+      searchTerm?: string;
+      categoryId?: string;
+      companyFilter?: string;
+      jobTitleFilter?: string;
+      sourceFilter?: string;
+      hasRecordings?: boolean;
+    };
+    sort?: {
+      field: string;
+      order: string;
+    };
+  }): Promise<{
+    questions: Question[];
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
+    const session = await neo4jConnection.getSession();
+    try {
+      // Build WHERE clause
+      const whereConditions: string[] = [];
+      const params: any = {
+        limit: options.limit,
+        offset: options.offset
+      };
+      console.log({params})
+      if (options.filters?.searchTerm) {
+        whereConditions.push('toLower(q.text) CONTAINS toLower($searchTerm)');
+        params.searchTerm = options.filters.searchTerm;
+      }
+
+      if (options.filters?.categoryId) {
+        whereConditions.push('EXISTS { (q)-[:TESTS_FOR]->(c:Category {id: $categoryId}) }');
+        params.categoryId = options.filters.categoryId;
+      }
+
+      if (options.filters?.companyFilter) {
+        whereConditions.push('EXISTS { (q)-[:TESTS_FOR]->(j:Job {company: $companyFilter}) }');
+        params.companyFilter = options.filters.companyFilter;
+      }
+
+      if (options.filters?.jobTitleFilter) {
+        whereConditions.push('EXISTS { (q)-[:TESTS_FOR]->(j:Job {title: $jobTitleFilter}) }');
+        params.jobTitleFilter = options.filters.jobTitleFilter;
+      }
+
+      if (options.filters?.hasRecordings === true) {
+        whereConditions.push('EXISTS { (r:Recording)-[:ANSWERS]->(q) }');
+      } else if (options.filters?.hasRecordings === false) {
+        whereConditions.push('NOT EXISTS { (r:Recording)-[:ANSWERS]->(q) }');
+      }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+      // Build ORDER BY clause
+      let orderClause = 'ORDER BY q.createdAt DESC'; // Default
+      if (options.sort) {
+        const direction = options.sort.order.toUpperCase();
+        switch (options.sort.field) {
+          case 'text':
+            orderClause = `ORDER BY q.text ${direction}`;
+            break;
+          case 'createdAt':
+            orderClause = `ORDER BY q.createdAt ${direction}`;
+            break;
+          case 'difficulty':
+            orderClause = `ORDER BY 
+              CASE q.difficulty 
+                WHEN 'easy' THEN 0 
+                WHEN 'medium' THEN 1 
+                WHEN 'hard' THEN 2 
+                ELSE 3 
+              END ${direction}`;
+            break;
+          case 'recordings':
+            orderClause = `ORDER BY size((q)<-[:ANSWERS]-(:Recording)) ${direction}`;
+            break;
+        }
+      }
+
+      // Get total count
+      const countResult = await session.run(`
+        MATCH (q:Question)
+        ${whereClause}
+        RETURN count(q) as totalCount
+      `, params);
+
+      const totalCount = Number(countResult.records[0].get('totalCount'));
+        console.log(typeof params.limit)
+      // Get paginated results
+
+      const result = await session.run(`
+        MATCH (q:Question)
+        ${whereClause}
+        ${orderClause}
+        SKIP toInteger($offset)
+        LIMIT toInteger($limit)
+        RETURN q
+      `, params);
+      
+      const questions = result.records.map((record: Record) => record.get('q').properties);
+
+      return {
+        questions,
+        totalCount,
+        hasNextPage: options.offset + options.limit < totalCount,
+        hasPreviousPage: options.offset > 0
+      };
     } finally {
       await session.close();
     }

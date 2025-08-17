@@ -50,7 +50,30 @@ export const resolvers = {
     trait: async (_: any, { id }: { id: string }) => {
       return traitService.getTraitById(id);
     },
-    questions: async () => {
+    questions: async (_: any, { 
+      limit = 25, 
+      offset = 0, 
+      filters, 
+      sort 
+    }: { 
+      limit?: number; 
+      offset?: number; 
+      filters?: any; 
+      sort?: any; 
+    }) => {
+      // Ensure integers for Neo4j
+      const intLimit = Math.floor(Number(limit));
+      const intOffset = Math.floor(Number(offset));
+      
+      return questionService.getQuestionsPaginated({
+        limit: intLimit,
+        offset: intOffset,
+        filters,
+        sort
+      });
+    },
+
+    allQuestions: async () => {
       return questionService.getAllQuestions();
     },
     question: async (_: any, { id }: { id: string }) => {

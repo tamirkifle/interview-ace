@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
-import { GET_QUESTIONS, GET_CATEGORIES } from '../../graphql/queries';
+import { GET_QUESTIONS_PAGINATED, GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question, Job } from '../../types';
 import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2 } from 'lucide-react';
@@ -29,19 +29,39 @@ export const QuestionsTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   
-  const { data, loading, error } = useQuery(GET_QUESTIONS, {
+  const { data, loading, error } = useQuery(GET_QUESTIONS_PAGINATED, {
+    variables: {
+      limit: parseInt(itemsPerPage.toString()),
+      offset: parseInt(((currentPage - 1) * itemsPerPage).toString()),
+      filters: {
+        searchTerm: searchTerm || undefined,
+        categoryId: categoryFilter || undefined,
+        companyFilter: companyFilter || undefined,
+        jobTitleFilter: jobTitleFilter || undefined,
+        sourceFilter: sourceFilter !== 'all' ? sourceFilter : undefined,
+        hasRecordings: hasRecordingsFilter
+      },
+      sort: {
+        field: sortField,
+        order: sortOrder
+      }
+    },
     fetchPolicy: 'cache-and-network'
   });
   const { data: categoriesData } = useQuery(GET_CATEGORIES);
 
   const [deleteQuestions] = useMutation(DELETE_QUESTIONS, {
-    refetchQueries: [{ query: GET_QUESTIONS }]
+    onCompleted: () => {
+      // Refetch current page after deletion
+      setSelectedIds(new Set());
+    }
   });
   
-  const questions = data?.questions || [];
+  const questions = data?.questions?.questions || [];
+  const totalCount = data?.questions?.totalCount || 0;
   const categories = categoriesData?.categories || [];
   
-  // Extract unique companies and job titles
+  // Extract unique companies and job titles from current page
   const uniqueCompanies: string[] = useMemo(() => {
     const companies = new Set<string>();
     questions.forEach((q: Question) => {
@@ -123,78 +143,9 @@ export const QuestionsTable = () => {
     }
   };
   
-  const filteredAndSortedQuestions = useMemo(() => {
-    let filtered = [...questions];
-
-    if (searchTerm) {
-      filtered = filtered.filter((q: Question) => 
-        q.text.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (categoryFilter) {
-      filtered = filtered.filter((q: Question) => 
-        q.categories.some((c: any) => c.id === categoryFilter)
-      );
-    }
-
-    if (companyFilter) {
-      filtered = filtered.filter((q: Question) => 
-        q.job?.company === companyFilter
-      );
-    }
-
-    if (jobTitleFilter) {
-      filtered = filtered.filter((q: Question) => 
-        q.job?.title === jobTitleFilter
-      );
-    }
-
-    if (sourceFilter !== 'all') {
-      filtered = filtered.filter((q: Question) => {
-        const sourceInfo = (q as any).sourceInfo;
-        return sourceInfo?.type === sourceFilter;
-      });
-    }
-
-    if (hasRecordingsFilter !== null) {
-      filtered = filtered.filter((q: Question) => {
-        const hasRecordings = (q.recordings?.length || 0) > 0;
-        return hasRecordings === hasRecordingsFilter;
-      });
-    }
-
-    filtered.sort((a: Question, b: Question) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'text':
-          comparison = a.text.localeCompare(b.text);
-          break;
-        case 'createdAt':
-          const dateA = parseDate(a.createdAt);
-          const dateB = parseDate(b.createdAt);
-          comparison = dateA.getTime() - dateB.getTime();
-          break;
-        case 'recordings':
-          comparison = (a.recordings?.length || 0) - (b.recordings?.length || 0);
-          break;
-        case 'difficulty':
-          const difficultyOrder: { [key: string]: number } = { easy: 0, medium: 1, hard: 2 };
-          comparison = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
-          break;
-      }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    return filtered;
-  }, [questions, searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter, sortField, sortOrder]);
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredAndSortedQuestions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedQuestions = filteredAndSortedQuestions.slice(startIndex, endIndex);
+  // Remove client-side filtering since it's now done server-side
+  const paginatedQuestions = questions;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -605,9 +556,9 @@ export const QuestionsTable = () => {
           <div className="text-center py-12">
             <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">No questions found</p>
-            {filteredAndSortedQuestions.length > 0 && (
+            {paginatedQuestions.length === 0 && (
               <p className="text-sm text-gray-400 mt-2">
-                Try a different page or adjust your filters
+                {totalCount > 0 ? 'Try a different page or adjust your filters' : 'No questions found'}
               </p>
             )}
           </div>
@@ -619,10 +570,10 @@ export const QuestionsTable = () => {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
           itemsPerPage={itemsPerPage}
-          totalItems={filteredAndSortedQuestions.length}
+          totalItems={totalCount}
           onItemsPerPageChange={(newItemsPerPage) => {
             setItemsPerPage(newItemsPerPage);
-            setCurrentPage(1); // Reset to first page when changing items per page
+            setCurrentPage(1);
           }}
         />
       )}

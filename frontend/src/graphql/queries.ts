@@ -56,9 +56,63 @@ export const GET_TRAITS = gql`
     }
   }
 `;
+export const GET_QUESTIONS_PAGINATED = gql`
+  query GetQuestionsPaginated(
+    $limit: Int!
+    $offset: Int!
+    $filters: QuestionFilters
+    $sort: QuestionSort
+  ) {
+    questions(
+      limit: $limit
+      offset: $offset
+      filters: $filters
+      sort: $sort
+    ) {
+      questions {
+        id
+        text
+        difficulty
+        commonality
+        createdAt
+        updatedAt
+        source
+        reasoning
+        sourceInfo {
+          type
+          name
+          displayName
+        }
+        categories {
+          id
+          name
+          color
+          description
+        }
+        traits {
+          id
+          name
+          description
+        }
+        job {
+          id
+          company
+          title
+        }
+        recordings {
+          id
+        }
+      }
+      totalCount
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+`;
+
 export const GET_QUESTIONS = gql`
   query GetQuestions {
-    questions {
+    allQuestions {
       id
       text
       difficulty

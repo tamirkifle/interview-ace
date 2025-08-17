@@ -141,7 +141,13 @@ export const typeDefs = gql`
     category(id: ID!): Category
     traits: [Trait!]!
     trait(id: ID!): Trait
-    questions: [Question!]!
+questions(
+      limit: Int = 25
+      offset: Int = 0
+      filters: QuestionFilters
+      sort: QuestionSort
+    ): QuestionsConnection!
+    allQuestions: [Question!]!
     question(id: ID!): Question
     recording(id: ID!): Recording
     recordings(
@@ -159,6 +165,27 @@ export const typeDefs = gql`
     generateQuestions(input: GenerateQuestionsInput!): QuestionGenerationResult!
     validateLLMKey: Boolean!
     recordingTranscriptionStatus(id: ID!): TranscriptionStatus
+  }
+
+input QuestionFilters {
+    searchTerm: String
+    categoryId: String
+    companyFilter: String
+    jobTitleFilter: String
+    sourceFilter: String
+    hasRecordings: Boolean
+  }
+
+  input QuestionSort {
+    field: String!
+    order: String!
+  }
+
+  type QuestionsConnection {
+    questions: [Question!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
   }
 
   input CreateStoryInput {

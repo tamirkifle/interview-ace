@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { MessageCircleQuestion, Sparkles, Plus, Library, FileText } from 'lucide-react';
-import { GET_QUESTIONS } from '../graphql/queries';
+import { GET_QUESTIONS_PAGINATED } from '../graphql/queries';
 import { CREATE_CUSTOM_QUESTION } from '../graphql/mutations';
 import { LoadingSpinner } from '../components/ui';
 import { QuestionsTable } from '../components/library/QuestionsTable';
@@ -15,17 +15,29 @@ import { Question, ResolvedGeneratedQuestion, QuestionGenerationResult } from '.
 import { useAPIKeys } from '../hooks/useAPIKeys';
 
 export const Questions = () => {
-  const { data, loading, error, refetch } = useQuery(GET_QUESTIONS);
   const { getAPIKeyStatus } = useAPIKeys();
   const [activeTab, setActiveTab] = useState<'library' | 'generate' | 'custom' | 'resume'>('library');
   const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
 
-  const questions = data?.questions || [];
+  // Get total count for tab display
+  const { data, loading, error, refetch } = useQuery(GET_QUESTIONS_PAGINATED, {
+    variables: {
+      limit: 1, // Just get 1 question to get totalCount
+      offset: 0,
+      filters: {},
+      sort: { field: 'createdAt', order: 'desc' }
+    }
+  });
+
+  const totalQuestions = data?.questions?.totalCount || 0;
   const apiKeyStatus = getAPIKeyStatus();
   const isLLMConfigured = apiKeyStatus.llm.available;
 
   const [createCustomQuestion] = useMutation(CREATE_CUSTOM_QUESTION, {
-    refetchQueries: [{ query: GET_QUESTIONS }],
+    onCompleted: () => {
+      // Refresh the table after creating a question
+      refetch();
+    },
   });
 
   const handleRetry = () => {
@@ -87,7 +99,7 @@ export const Questions = () => {
                   }`}
                 >
                   <Library className="w-4 h-4 inline mr-2" />
-                  Question Library ({questions.length})
+                  Question Library ({totalQuestions})
                 </button>
                 <button
                   onClick={() => setActiveTab('generate')}
@@ -140,7 +152,7 @@ export const Questions = () => {
           <div>
             {activeTab === 'library' && (
               <div>
-                {questions.length === 0 ? (
+                {totalQuestions === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                     <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No questions yet</h3>
