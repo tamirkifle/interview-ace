@@ -125,7 +125,7 @@ export class QuestionService {
         limit: options.limit,
         offset: options.offset
       };
-      console.log({params})
+
       if (options.filters?.searchTerm) {
         whereConditions.push('toLower(q.text) CONTAINS toLower($searchTerm)');
         params.searchTerm = options.filters.searchTerm;
@@ -144,6 +144,26 @@ export class QuestionService {
       if (options.filters?.jobTitleFilter) {
         whereConditions.push('EXISTS { (q)-[:TESTS_FOR]->(j:Job {title: $jobTitleFilter}) }');
         params.jobTitleFilter = options.filters.jobTitleFilter;
+      }
+
+      if (options.filters?.sourceFilter) {
+        switch (options.filters.sourceFilter) {
+          case 'job':
+            whereConditions.push('(EXISTS { (q)-[:TESTS_FOR]->(j:Job) } OR q.source = "job")');
+            break;
+          case 'experience':
+            whereConditions.push('(EXISTS { (q)-[:TESTS_FOR]->(e:Experience) } OR q.source = "experience")');
+            break;
+          case 'project':
+            whereConditions.push('(EXISTS { (q)-[:TESTS_FOR]->(p:Project) } OR q.source = "project")');
+            break;
+          case 'custom':
+            whereConditions.push('q.source = "custom"');
+            break;
+          case 'generated':
+            whereConditions.push('(q.source = "generated" OR q.source IS NULL OR q.source = "seeded")');
+            break;
+        }
       }
 
       if (options.filters?.hasRecordings === true) {
@@ -188,9 +208,8 @@ export class QuestionService {
       `, params);
 
       const totalCount = Number(countResult.records[0].get('totalCount'));
-        console.log(typeof params.limit)
-      // Get paginated results
 
+      // Get paginated results
       const result = await session.run(`
         MATCH (q:Question)
         ${whereClause}

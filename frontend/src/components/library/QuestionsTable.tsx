@@ -180,7 +180,7 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
         className="flex items-center gap-1"
       >
         {config.icon}
-        {config.label}
+        <span className="max-w-[120px]">{config.label}</span>
       </Badge>
     );
   };

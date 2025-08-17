@@ -26,9 +26,42 @@ export const DELETE_RECORDING = gql`
   }
 `;
 
+export const CREATE_JOB = gql`
+  mutation CreateJob($input: CreateJobInput!) {
+    createJob(input: $input) {
+      id
+      company
+      title
+      description
+    }
+  }
+`;
+
 export const CREATE_CUSTOM_QUESTION = gql`
   mutation CreateCustomQuestion($input: CreateCustomQuestionInput!) {
     createCustomQuestion(input: $input) {
+      id
+      text
+      difficulty
+      commonality
+      createdAt
+      updatedAt
+      categories {
+        id
+        name
+        color
+      }
+      traits {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const CREATE_QUESTIONS_BULK = gql`
+  mutation CreateQuestionsBulk($questions: [CreateCustomQuestionInput!]!) {
+    createQuestionsBulk(questions: $questions) {
       id
       text
       difficulty

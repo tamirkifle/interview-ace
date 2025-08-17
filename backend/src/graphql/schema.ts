@@ -45,6 +45,8 @@ export const typeDefs = gql`
     company: String!
     title: String!
     description: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
     questions: [Question!]!
   }
 
@@ -63,7 +65,6 @@ export const typeDefs = gql`
     updatedAt: DateTime!
     questions: [Question!]!
   }
-
 
   type Question {
     id: ID!
@@ -120,6 +121,13 @@ export const typeDefs = gql`
     suggestedTraits: [Trait!]!
     difficulty: String!
     reasoning: String!
+    metadata: QuestionMetadata
+  }
+
+  type QuestionMetadata {
+    entityType: String
+    entityId: String
+    source: String
   }
 
   type QuestionGenerationResult {
@@ -141,7 +149,7 @@ export const typeDefs = gql`
     category(id: ID!): Category
     traits: [Trait!]!
     trait(id: ID!): Trait
-questions(
+    questions(
       limit: Int = 25
       offset: Int = 0
       filters: QuestionFilters
@@ -167,7 +175,7 @@ questions(
     recordingTranscriptionStatus(id: ID!): TranscriptionStatus
   }
 
-input QuestionFilters {
+  input QuestionFilters {
     searchTerm: String
     categoryId: String
     companyFilter: String
@@ -216,12 +224,22 @@ input QuestionFilters {
     difficulty: String
   }
 
+  input CreateJobInput {
+    company: String!
+    title: String!
+    description: String!
+  }
+
   input CreateCustomQuestionInput {
     text: String!
     categoryIds: [ID!]!
     traitIds: [ID!]!
     difficulty: String!
     reasoning: String
+    source: String
+    entityType: String
+    entityId: String
+    jobId: String
   }
     
   input UpdateQuestionInput {
@@ -276,7 +294,9 @@ input QuestionFilters {
     updateStory(id: ID!, input: UpdateStoryInput!): Story!
     createRecording(input: CreateRecordingInput!): Recording!
     deleteRecording(id: ID!): Boolean!
+    createJob(input: CreateJobInput!): Job!
     createCustomQuestion(input: CreateCustomQuestionInput!): Question!
+    createQuestionsBulk(questions: [CreateCustomQuestionInput!]!): [Question!]!
     updateQuestion(id: ID!, text: String!): Question!
     deleteQuestions(ids: [ID!]!): Int!
     updateQuestionFull(id: ID!, input: UpdateQuestionInput!): Question!

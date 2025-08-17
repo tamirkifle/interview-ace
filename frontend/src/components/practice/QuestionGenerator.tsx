@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { useLazyQuery } from '@apollo/client';
+import { useLazyQuery, useMutation } from '@apollo/client';
 import { Sparkles, FileText, AlertCircle, Loader2, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GENERATE_QUESTIONS } from '../../graphql/queries';
+import { CREATE_JOB } from '../../graphql/mutations';
 import { useCategories } from '../../hooks/useCategories';
 import { useTraits } from '../../hooks/useTraits';
 import { MultiSelect } from '../ui/MultiSelect';
 import { GenerateQuestionsInput, QuestionGenerationResult } from '../../types';
 
 interface QuestionGeneratorProps {
-  onQuestionsGenerated: (result: QuestionGenerationResult) => void;
+  onQuestionsGenerated: (result: QuestionGenerationResult & { jobId?: string }) => void;
   isConfigured: boolean;
 }
 
@@ -22,14 +23,45 @@ export const QuestionGenerator = ({ onQuestionsGenerated, isConfigured }: Questi
   const [jobTitle, setJobTitle] = useState('');
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<'mixed' | 'easy' | 'medium' | 'hard'>('mixed');
-  
+
   const { categories } = useCategories();
   const { traits } = useTraits();
 
+  const [createJob] = useMutation(CREATE_JOB);
+
   const [generateQuestions, { loading, error }] = useLazyQuery(GENERATE_QUESTIONS, {
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       if (data?.generateQuestions) {
-        onQuestionsGenerated(data.generateQuestions);
+        let jobId: string | undefined;
+        
+        // Create job if this is a job description generation
+        if (activeTab === 'job' && company.trim() && jobTitle.trim() && jobDescription.trim()) {
+          try {
+            const jobResult = await createJob({
+              variables: {
+                input: {
+                  company: company.trim(),
+                  title: jobTitle.trim(),
+                  description: jobDescription.trim()
+                }
+              }
+            });
+            jobId = jobResult.data?.createJob?.id;
+          } catch (error) {
+            console.error('Failed to create job:', error);
+          }
+        }
+
+        // Add job info to the result for frontend use
+        const resultWithMetadata = {
+          ...data.generateQuestions,
+          jobId,
+          company: company.trim(),
+          jobTitle: jobTitle.trim()
+        };
+        
+        console.log('Passing result to onQuestionsGenerated:', resultWithMetadata);
+        onQuestionsGenerated(resultWithMetadata);
       }
     },
     onError: (error) => {

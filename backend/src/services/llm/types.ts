@@ -32,12 +32,17 @@ export interface ResolvedGeneratedQuestion {
   suggestedTraits: Trait[]; // Resolved objects for GraphQL
   difficulty: 'easy' | 'medium' | 'hard';
   reasoning?: string;
+  metadata?: {
+    entityType?: string;
+    entityId?: string;
+    source?: string;
+  };
 }
   
 export interface QuestionGenerationResult {
     questions: ResolvedGeneratedQuestion[];
     generationId: string;
-    sourceType: 'categories' | 'job_description' | 'mixed' | 'resume';
+    sourceType: 'categories' | 'job' | 'mixed' | 'experience' | 'project' | 'generated';
     provider: string;
 }
   

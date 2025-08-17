@@ -3,16 +3,12 @@ import { OpenAIProvider } from './providers/openai';
 import { AnthropicProvider } from './providers/anthropic';
 import { GeminiProvider } from './providers/gemini';
 import { OllamaProvider } from './providers/ollama';
-import { QuestionService } from '../questionService';
-import { JobService } from '../jobService';
+import { ResumeProcessorPrompts } from './prompts/resumeProcessor';
 import { CategoryService } from '../categoryService';
 import { TraitService } from '../traitService';
-import { v4 as uuidv4 } from 'uuid';
-import { Question, Job } from '../storyService';
 import { Category, Trait } from '../storyService';
+import { v4 as uuidv4 } from 'uuid';
 
-const questionService = new QuestionService();
-const jobService = new JobService();
 const categoryService = new CategoryService();
 const traitService = new TraitService();
 
@@ -105,61 +101,88 @@ export class LLMService {
         };
       })
     );
+
+    // Determine source type based on request
+    const sourceType = request.jobDescription
+      ? request.categoryIds?.length
+        ? 'mixed'
+        : 'job'
+      : 'generated';
+
+    return {
+      questions: resolvedQuestions,
+      generationId: uuidv4(),
+      sourceType,
+      provider: provider.getName(),
+    };
+  }
+
+  async consolidateDescription(oldDesc: string, newDesc: string, provider: LLMProvider): Promise<string> {
+    const consolidationPrompt = ResumeProcessorPrompts.buildConsolidationPrompt(oldDesc, newDesc);
+    const rawConsolidation = await provider.generateCompletion(consolidationPrompt);
+    return rawConsolidation.replace(/```json\n|```/g, '').trim();
+  }
+
+  async processResume(resumeText: string, context: LLMContext): Promise<{
+    experiences: Array<{ id: string; description: string }>;
+    projects: Array<{ id: string; description: string }>;
+  }> {
+    const provider = this.getProvider(context);
+    const prompt = ResumeProcessorPrompts.buildResumeAnalysisPrompt(resumeText);
     
-    try {
-      // Handle persistence for job-specific questions
-      if (request.jobDescription && request.company && request.title) {
-        const jobNode: Job = await jobService.createOrFindJob({
-          company: request.company,
-          title: request.title,
-          description: request.jobDescription,
-        });
+    const rawCompletion = await provider.generateCompletion(prompt);
+    const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
+    
+    return JSON.parse(cleanedResponse);
+  }
 
-        const savedQuestions: ResolvedGeneratedQuestion[] = await Promise.all(
-          resolvedQuestions.map(async (q) => {
-            const newQuestion: Question = await questionService.createQuestion({
-              text: q.text,
-              categoryIds: q.suggestedCategories.map(c => c.id),
-              traitIds: q.suggestedTraits.map(t => t.id),
-              difficulty: q.difficulty,
-              commonality: 5,
-              source: 'generated',
-              reasoning: q.reasoning,
-            });
-
-            await questionService.linkQuestionToJob(newQuestion.id, jobNode.id);
-
-            return {
-              ...q,
-              id: newQuestion.id,
-            };
-          })
-        );
-        resolvedQuestions = savedQuestions;
-      }
-
-      const sourceType = request.jobDescription
-        ? request.categoryIds?.length
-          ? 'mixed'
-          : 'job_description'
-        : 'categories';
-
-      return {
-        questions: resolvedQuestions,
-        generationId: uuidv4(),
-        sourceType,
-        provider: provider.getName(),
-      };
-    } catch (error) {
-      if (error instanceof LLMError) {
-        throw error;
-      }
-      throw new LLMError(
-        'Unexpected error during question generation',
-        'PROVIDER_ERROR',
-        provider.getName()
-      );
-    }
+  async generateResumeQuestions(
+    entityType: 'experience' | 'project',
+    entityId: string,
+    description: string,
+    count: number,
+    context: LLMContext
+  ): Promise<QuestionGenerationResult> {
+    const provider = this.getProvider(context);
+    const prompt = ResumeProcessorPrompts.buildQuestionGenerationPrompt(
+      entityType,
+      entityId,
+      description,
+      count
+    );
+    
+    const rawCompletion = await provider.generateCompletion(prompt);
+    const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
+    const questions = JSON.parse(cleanedResponse);
+    
+    // Resolve category and trait names to objects
+    const resolvedQuestions = await Promise.all(
+      questions.map(async (q: any) => {
+        const resolvedCategories = await this.resolveCategoryNamesToObjects(q.suggestedCategories || []);
+        const resolvedTraits = await this.resolveTraitNamesToObjects(q.suggestedTraits || []);
+        
+        return {
+          text: q.text,
+          difficulty: q.difficulty,
+          reasoning: q.reasoning,
+          suggestedCategories: resolvedCategories,
+          suggestedTraits: resolvedTraits,
+          // Add metadata for frontend
+          metadata: {
+            entityType,
+            entityId,
+            source: entityType // Use entityType directly as source
+          }
+        };
+      })
+    );
+    
+    return {
+      questions: resolvedQuestions,
+      generationId: uuidv4(),
+      sourceType: entityType, // This should be 'experience' or 'project'
+      provider: context.provider || 'unknown',
+    };
   }
 
   async validateApiKey(context: LLMContext): Promise<boolean> {

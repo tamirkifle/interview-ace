@@ -101,7 +101,9 @@ export const CustomQuestion = ({ onQuestionCreated }: CustomQuestionProps) => {
           text: questionText.trim(),
           categoryIds: selectedCategories,
           traitIds: selectedTraits,
-          difficulty
+          difficulty,
+          source: 'custom',
+          reasoning: null // Custom questions don't have AI reasoning
         }
       }
     });

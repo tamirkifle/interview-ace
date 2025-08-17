@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@apollo/client';
 import { MessageCircleQuestion, Sparkles, Plus, FileText } from 'lucide-react';
-import { CREATE_CUSTOM_QUESTION } from '../graphql/mutations';
+import { CREATE_CUSTOM_QUESTION, CREATE_QUESTIONS_BULK } from '../graphql/mutations';
 import { LoadingSpinner } from '../components/ui';
 import { QuestionsTable } from '../components/library/QuestionsTable';
 import { QuestionGenerator } from '../components/practice/QuestionGenerator';
@@ -19,7 +19,13 @@ export const Questions = () => {
   const { totalCount, loading, error, refetch } = questionsData;
   const { getAPIKeyStatus } = useAPIKeys();
   const [activeTab, setActiveTab] = useState<'library' | 'generate' | 'custom' | 'resume'>('library');
-  const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
+  const [generationResult, setGenerationResult] = useState<QuestionGenerationResult & { 
+    jobId?: string; 
+    entityType?: string; 
+    entityId?: string;
+    company?: string;
+    jobTitle?: string;
+  } | null>(null);
 
   const apiKeyStatus = getAPIKeyStatus();
   const isLLMConfigured = apiKeyStatus.llm.available;
@@ -28,27 +34,106 @@ export const Questions = () => {
     onCompleted: () => {
       refetch();
     },
+    // Force cache update for sourceInfo
+    update: (cache, { data }) => {
+      if (data?.createCustomQuestion) {
+        // Evict the question from cache to force refetch of sourceInfo
+        cache.evict({ 
+          id: cache.identify(data.createCustomQuestion),
+          fieldName: 'sourceInfo'
+        });
+      }
+    }
   });
 
-  const handleQuestionsGenerated = (result: QuestionGenerationResult) => {
+  const [createQuestionsBulk] = useMutation(CREATE_QUESTIONS_BULK, {
+    onCompleted: () => {
+      refetch();
+    },
+    // Force cache update for all questions
+    update: (cache, { data }) => {
+      if (data?.createQuestionsBulk) {
+        data.createQuestionsBulk.forEach((question: any) => {
+          cache.evict({ 
+            id: cache.identify(question),
+            fieldName: 'sourceInfo'
+          });
+        });
+      }
+    }
+  });
+
+  const handleQuestionsGenerated = (result: QuestionGenerationResult & { 
+    jobId?: string; 
+    entityType?: string; 
+    entityId?: string;
+    company?: string;
+    jobTitle?: string;
+  }) => {
     setGenerationResult(result);
   };
 
   const handleSaveGeneratedQuestion = async (question: ResolvedGeneratedQuestion) => {
     try {
-      await createCustomQuestion({
-        variables: {
-          input: {
-            text: question.text,
-            difficulty: question.difficulty,
-            categoryIds: question.suggestedCategories?.map(c => c.id) || [],
-            traitIds: question.suggestedTraits?.map(t => t.id) || [],
-            reasoning: question.reasoning,
-          },
-        },
-      });
+      const input: any = {
+        text: question.text,
+        categoryIds: question.suggestedCategories?.map(c => c.id) || [],
+        traitIds: question.suggestedTraits?.map(t => t.id) || [],
+        difficulty: question.difficulty,
+        reasoning: question.reasoning,
+      };
+
+      // Add source and metadata based on generation type
+      if (generationResult) {
+        input.source = generationResult.sourceType;
+        
+        if (generationResult.jobId) {
+          input.jobId = generationResult.jobId;
+        }
+        
+        if (generationResult.entityType && generationResult.entityId) {
+          input.entityType = generationResult.entityType;
+          input.entityId = generationResult.entityId;
+        }
+      }
+
+      await createCustomQuestion({ variables: { input } });
     } catch (err) {
       console.error('Failed to save generated question:', err);
+    }
+  };
+
+  const handleSaveBulkQuestions = async (questions: ResolvedGeneratedQuestion[]) => {
+    try {
+      const questionsInput = questions.map(question => {
+        const input: any = {
+          text: question.text,
+          categoryIds: question.suggestedCategories?.map(c => c.id) || [],
+          traitIds: question.suggestedTraits?.map(t => t.id) || [],
+          difficulty: question.difficulty,
+          reasoning: question.reasoning,
+        };
+
+        // Add source and metadata based on generation type
+        if (generationResult) {
+          input.source = generationResult.sourceType;
+          
+          if (generationResult.jobId) {
+            input.jobId = generationResult.jobId;
+          }
+          
+          if (generationResult.entityType && generationResult.entityId) {
+            input.entityType = generationResult.entityType;
+            input.entityId = generationResult.entityId;
+          }
+        }
+
+        return input;
+      });
+
+      await createQuestionsBulk({ variables: { questions: questionsInput } });
+    } catch (err) {
+      console.error('Failed to save bulk questions:', err);
     }
   };
 
@@ -175,6 +260,7 @@ export const Questions = () => {
                     result={generationResult}
                     onClose={() => setGenerationResult(null)}
                     onSaveQuestion={handleSaveGeneratedQuestion}
+                    onSaveBulkQuestions={handleSaveBulkQuestions}
                     onRecordAnswer={() => {}}
                   />
                 ) : (
@@ -193,6 +279,7 @@ export const Questions = () => {
                     result={generationResult}
                     onClose={() => setGenerationResult(null)}
                     onSaveQuestion={handleSaveGeneratedQuestion}
+                    onSaveBulkQuestions={handleSaveBulkQuestions}
                     onRecordAnswer={() => {}}
                   />
                 ) : (

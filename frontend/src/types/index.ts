@@ -101,12 +101,18 @@ export interface ResolvedGeneratedQuestion {
   suggestedTraits: Trait[];
   difficulty: 'easy' | 'medium' | 'hard';
   reasoning?: string;
+  metadata?: {
+    entityType?: string;
+    entityId?: string;
+    source?: string;
+    displayName?: string;
+  };
 }
 
 export interface QuestionGenerationResult {
   questions: ResolvedGeneratedQuestion[];
   generationId: string;
-  sourceType: string;
+  sourceType: 'categories' | 'job' | 'mixed' | 'experience' | 'project' | 'generated';
   provider: string;
 }
 

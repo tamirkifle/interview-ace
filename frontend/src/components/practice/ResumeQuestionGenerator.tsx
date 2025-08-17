@@ -24,7 +24,6 @@ const GENERATE_RESUME_QUESTIONS = gql`
   mutation GenerateResumeQuestions($input: GenerateResumeQuestionsInput!) {
     generateResumeQuestions(input: $input) {
       questions {
-        id
         text
         difficulty
         reasoning
@@ -36,6 +35,11 @@ const GENERATE_RESUME_QUESTIONS = gql`
         suggestedTraits {
           id
           name
+        }
+        metadata {
+          entityType
+          entityId
+          source
         }
       }
       generationId
@@ -85,7 +89,22 @@ export const ResumeQuestionGenerator = ({
 
   const [generateQuestions, { loading: generating }] = useMutation(GENERATE_RESUME_QUESTIONS, {
     onCompleted: (data) => {
-      onQuestionsGenerated(data.generateResumeQuestions);
+      // Add entity metadata to each question for saving later
+      const questionsWithMetadata = {
+        ...data.generateResumeQuestions,
+        entityType: selectedEntity?.type,
+        entityId: selectedEntity?.id,
+        questions: data.generateResumeQuestions.questions.map((q: any) => ({
+          ...q,
+          metadata: {
+            entityType: selectedEntity?.type,
+            entityId: selectedEntity?.id,
+            source: selectedEntity?.type,
+            displayName: selectedEntity?.id?.replace(/_/g, ' ') || 'Unknown'
+          }
+        }))
+      };
+      onQuestionsGenerated(questionsWithMetadata);
     }
   });
 

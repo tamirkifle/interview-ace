@@ -8,11 +8,9 @@ import { ProjectService } from '../../services/projectService';
 import { dateTimeScalar } from '../schema/scalars';
 import { llmService, LLMError } from '../../services/llm';
 import { JobService } from '../../services/jobService';
-import { ResumeProcessorPrompts } from '../../services/llm/prompts/resumeProcessor';
 import { GraphQLError } from 'graphql';
-import { Category, Trait } from '../../services/storyService';
-import { GeneratedQuestion, ResolvedGeneratedQuestion } from '../../services/llm/types';
 import { neo4jConnection } from '../../db/neo4j';
+import { Question } from '../../services/storyService';
 
 const storyService = new StoryService();
 const categoryService = new CategoryService();
@@ -101,7 +99,7 @@ export const resolvers = {
       return projectService.getProjectById(id);
     },
     
-    // Question Generation
+    // Question Generation - NO AUTO-SAVE
     generateQuestions: async (_: any, { input }: { input: any }, context: any) => {
       try {
         if (!context.llmContext) {
@@ -111,24 +109,7 @@ export const resolvers = {
         }
         
         const result = await llmService.generateQuestions(input, context.llmContext);
-
-        const questionsWithResolvedRefs: ResolvedGeneratedQuestion[] = await Promise.all(
-          result.questions.map(async (q: ResolvedGeneratedQuestion) => {
-            const resolvedCategories = q.suggestedCategories;
-            const resolvedTraits = q.suggestedTraits;
-            
-            return {
-              ...q,
-              suggestedCategories: resolvedCategories,
-              suggestedTraits: resolvedTraits,
-            };
-          })
-        );
-        
-        return {
-          ...result,
-          questions: questionsWithResolvedRefs
-        };
+        return result;
       } catch (error) {
         if (error instanceof LLMError) {
           throw new GraphQLError(error.message, {
@@ -180,8 +161,24 @@ export const resolvers = {
     deleteRecording: async (_: any, { id }: { id: string }) => {
       return recordingService.deleteRecording(id);
     },
+    createJob: async (_: any, { input }: { input: any }) => {
+      const { company, title, description } = input;
+      
+      if (!company?.trim() || !title?.trim() || !description?.trim()) {
+        throw new GraphQLError('Company, title, and description are required', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+      
+      return jobService.createOrFindJob({
+        company: company.trim(),
+        title: title.trim(),
+        description: description.trim()
+      });
+    },
     createCustomQuestion: async (_: any, { input }: { input: any }) => {
-      const { text, categoryIds, traitIds, difficulty, reasoning } = input;
+      const { text, categoryIds, traitIds, difficulty, reasoning, source, entityType, entityId, jobId } = input;
+      
       // Validation
       if (text.trim().length < 20) {
         throw new GraphQLError('Question must be at least 20 characters long', {
@@ -211,15 +208,158 @@ export const resolvers = {
       }
       
       // Create the question
-      return questionService.createQuestion({
+      const question = await questionService.createQuestion({
         text: text.trim(),
         categoryIds: categoryIds || [],
         traitIds: traitIds || [],
         difficulty,
         reasoning,
-        commonality: 5, // Default commonality for custom questions
-        source: 'custom' // Track that this was user-created
+        commonality: 5,
+        source: source || 'custom'
       });
+
+      // Create additional relationships based on source
+      const session = await neo4jConnection.getSession();
+      try {
+        if (entityType && entityId) {
+          console.log('Creating entity relationship:', { entityType, entityId, questionId: question.id });
+          const nodeType = entityType === 'experience' ? 'Experience' : 'Project';
+          await session.run(`
+            MATCH (q:Question {id: $questionId})
+            MATCH (e:${nodeType} {id: $entityId})
+            MERGE (q)-[:TESTS_FOR]->(e)
+          `, { questionId: question.id, entityId });
+        }
+
+        if (jobId) {
+          console.log('Creating job relationship:', { jobId, questionId: question.id });
+          
+          // First check if the job exists
+          const jobCheck = await session.run(`
+            MATCH (j:Job {id: $jobId})
+            RETURN j.company, j.title
+          `, { jobId });
+          
+          console.log('Job exists check:', jobCheck.records.length > 0, jobCheck.records[0]?.get('j.company'));
+          
+          if (jobCheck.records.length === 0) {
+            console.error('Job not found with ID:', jobId);
+          } else {
+            const result = await session.run(`
+              MATCH (q:Question {id: $questionId})
+              MATCH (j:Job {id: $jobId})
+              MERGE (q)-[:TESTS_FOR]->(j)
+              RETURN j
+            `, { questionId: question.id, jobId });
+            console.log('Job relationship created, result:', result.records.length);
+          }
+        }
+      } finally {
+        await session.close();
+      }
+
+      return question;
+    },
+
+    createQuestionsBulk: async (_: any, { questions }: { questions: any[] }) => {
+      // Validation for bulk operation
+      if (!questions || questions.length === 0) {
+        throw new GraphQLError('No questions provided', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+
+      if (questions.length > 20) {
+        throw new GraphQLError('Maximum 20 questions allowed per bulk operation', {
+          extensions: { code: 'VALIDATION_ERROR' }
+        });
+      }
+
+      // Validate each question
+      for (const question of questions) {
+        if (!question.text || question.text.trim().length < 20) {
+          throw new GraphQLError('All questions must be at least 20 characters long', {
+            extensions: { code: 'VALIDATION_ERROR' }
+          });
+        }
+        
+        if ((!question.categoryIds || question.categoryIds.length === 0) && 
+            (!question.traitIds || question.traitIds.length === 0)) {
+          throw new GraphQLError('All questions must have at least one category or trait', {
+            extensions: { code: 'VALIDATION_ERROR' }
+          });
+        }
+        
+        const validDifficulties = ['easy', 'medium', 'hard'];
+        if (!validDifficulties.includes(question.difficulty)) {
+          throw new GraphQLError('Invalid difficulty level in bulk questions', {
+            extensions: { code: 'VALIDATION_ERROR' }
+          });
+        }
+      }
+
+      // Check for duplicates in the batch and against existing questions
+      const questionTexts = questions.map(q => q.text.trim().toLowerCase());
+      const uniqueTexts = new Set(questionTexts);
+      if (uniqueTexts.size !== questionTexts.length) {
+        throw new GraphQLError('Duplicate questions found in batch', {
+          extensions: { code: 'DUPLICATE_ERROR' }
+        });
+      }
+
+      // Check against existing questions
+      for (const question of questions) {
+        const existing = await questionService.findByText(question.text.trim());
+        if (existing) {
+          throw new GraphQLError(`Question already exists: "${question.text.trim()}"`, {
+            extensions: { code: 'DUPLICATE_ERROR' }
+          });
+        }
+      }
+
+      // Create all questions in a single transaction
+      const session = await neo4jConnection.getSession();
+      try {
+        const createdQuestions: Question[] = [];
+        
+        await session.executeWrite(async (tx) => {
+          for (const questionInput of questions) {
+            const question = await questionService.createQuestion({
+              text: questionInput.text.trim(),
+              categoryIds: questionInput.categoryIds || [],
+              traitIds: questionInput.traitIds || [],
+              difficulty: questionInput.difficulty,
+              reasoning: questionInput.reasoning,
+              commonality: 5,
+              source: questionInput.source || 'bulk'
+            });
+
+            // Create additional relationships based on source
+            if (questionInput.entityType && questionInput.entityId) {
+              const nodeType = questionInput.entityType === 'experience' ? 'Experience' : 'Project';
+              await session.run(`
+                MATCH (q:Question {id: $questionId})
+                MATCH (e:${nodeType} {id: $entityId})
+                MERGE (q)-[:TESTS_FOR]->(e)
+              `, { questionId: question.id, entityId: questionInput.entityId });
+            }
+
+            if (questionInput.jobId) {
+              await session.run(`
+                MATCH (q:Question {id: $questionId})
+                MATCH (j:Job {id: $jobId})
+                MERGE (q)-[:TESTS_FOR]->(j)
+              `, { questionId: question.id, jobId: questionInput.jobId });
+            }
+
+            createdQuestions.push(question);
+          }
+        });
+
+        return createdQuestions;
+      } finally {
+        await session.close();
+      }
     },
     updateQuestion: async (_: any, { id, text }: { id: string; text: string }) => {
       if (!text || text.trim().length < 20) {
@@ -289,15 +429,7 @@ export const resolvers = {
       }
 
       try {
-        const prompt = ResumeProcessorPrompts.buildResumeAnalysisPrompt(input.resumeText);
-        const provider = llmService.getProvider(context.llmContext);
-        
-        // Get AI analysis
-        const rawCompletion = await provider.generateCompletion(prompt);
-        
-        // Clean response to remove markdown formatting
-        const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
-        const analysis = JSON.parse(cleanedResponse);
+        const analysis = await llmService.processResume(input.resumeText, context.llmContext);
         
         const processedExperiences = [];
         const processedProjects = [];
@@ -305,9 +437,8 @@ export const resolvers = {
         // Process experiences
         for (const exp of analysis.experiences || []) {
           const consolidationFn = async (oldDesc: string, newDesc: string) => {
-            const consolidationPrompt = ResumeProcessorPrompts.buildConsolidationPrompt(oldDesc, newDesc);
-            const rawConsolidation = await provider.generateCompletion(consolidationPrompt);
-            return rawConsolidation.replace(/```json\n|```/g, '').trim();
+            const provider = llmService.getProvider(context.llmContext);
+            return await llmService.consolidateDescription(oldDesc, newDesc, provider);
           };
           
           const experience = await experienceService.createOrUpdateExperience(
@@ -321,9 +452,8 @@ export const resolvers = {
         // Process projects  
         for (const proj of analysis.projects || []) {
           const consolidationFn = async (oldDesc: string, newDesc: string) => {
-            const consolidationPrompt = ResumeProcessorPrompts.buildConsolidationPrompt(oldDesc, newDesc);
-            const rawConsolidation = await provider.generateCompletion(consolidationPrompt);
-            return rawConsolidation.replace(/```json\n|```/g, '').trim();
+            const provider = llmService.getProvider(context.llmContext);
+            return await llmService.consolidateDescription(oldDesc, newDesc, provider);
           };
           
           const project = await projectService.createOrUpdateProject(
@@ -359,7 +489,9 @@ export const resolvers = {
       }
 
       try {
-        const { entityType, entityId, count = 5, difficulty } = input;
+        const { entityType, entityId, count = 5 } = input;
+        
+        console.log('generateResumeQuestions input:', { entityType, entityId, count });
         
         // Get entity description
         let entity;
@@ -375,73 +507,17 @@ export const resolvers = {
           });
         }
         
-        const prompt = ResumeProcessorPrompts.buildQuestionGenerationPrompt(
+        const result = await llmService.generateResumeQuestions(
           entityType,
           entityId,
           entity.description,
-          count
+          count,
+          context.llmContext
         );
         
-        const provider = llmService.getProvider(context.llmContext);
-        const rawCompletion = await provider.generateCompletion(prompt);
+        console.log('generateResumeQuestions result:', result);
         
-        // Clean response to remove markdown formatting
-        const cleanedResponse = rawCompletion.replace(/```json\n|```/g, '').trim();
-        const questions = JSON.parse(cleanedResponse);
-        
-        // Resolve category and trait names to objects
-        const resolvedQuestions = await Promise.all(
-          questions.map(async (q: any) => {
-            console.log('Raw question from LLM:', q);
-            console.log('suggestedCategories:', q.suggestedCategories);
-            console.log('suggestedTraits:', q.suggestedTraits);
-            
-            const resolvedCategories = await llmService.resolveCategoryNamesToObjects(q.suggestedCategories || []);
-            const resolvedTraits = await llmService.resolveTraitNamesToObjects(q.suggestedTraits || []);
-            
-            console.log('resolvedCategories:', resolvedCategories);
-            console.log('resolvedTraits:', resolvedTraits);
-            
-            const question = await questionService.createQuestion({
-              text: q.text,
-              difficulty: difficulty || q.difficulty,
-              commonality: 5,
-              source: 'resume',
-              reasoning: q.reasoning,
-              categoryIds: resolvedCategories.map(c => c.id),
-              traitIds: resolvedTraits.map(t => t.id)
-            });
-            
-            // Link to entity using TESTS_FOR relationship
-            const session = await neo4jConnection.getSession();
-            try {
-              await session.run(`
-                MATCH (q:Question {id: $questionId})
-                MATCH (e:${entityType === 'experience' ? 'Experience' : 'Project'} {id: $entityId})
-                MERGE (q)-[:TESTS_FOR]->(e)
-              `, { questionId: question.id, entityId });
-            } finally {
-              await session.close();
-            }
-            
-            // Return the structure that matches GraphQL schema (with resolved objects)
-            return {
-              id: question.id,
-              text: question.text,
-              difficulty: question.difficulty,
-              reasoning: q.reasoning,
-              suggestedCategories: resolvedCategories, // Category objects
-              suggestedTraits: resolvedTraits // Trait objects
-            };
-          })
-        );
-        
-        return {
-          questions: resolvedQuestions,
-          generationId: `resume-${Date.now()}`,
-          sourceType: 'resume',
-          provider: context.llmContext.provider
-        };
+        return result;
       } catch (error: any) {
         console.error('Resume question generation error:', error);
         throw new GraphQLError('Failed to generate questions', {
@@ -452,6 +528,7 @@ export const resolvers = {
         });
       }
     },
+
     updateStory: async (_: any, { id, input }: { id: string; input: any }) => {
       const { title, situation, task, action, result, categoryIds, traitIds } = input;
       
@@ -579,57 +656,94 @@ export const resolvers = {
     sourceInfo: async (parent: { id: string, source?: string }) => {
       const session = await neo4jConnection.getSession();
       try {
+        console.log('sourceInfo called for question:', { id: parent.id, source: parent.source });
+        
         // Check for job relationship
         const jobResult = await session.run(`
           MATCH (q:Question {id: $id})-[:TESTS_FOR]->(j:Job)
-          RETURN j.company + ' - ' + j.title as name, 'job' as type
+          RETURN j.company + ' - ' + j.title as displayName, j.company + ' - ' + j.title as name, 'job' as type
         `, { id: parent.id });
         
+        console.log('jobResult:', jobResult.records.length);
         if (jobResult.records.length > 0) {
-          return {
+          const result = {
             type: 'job',
             name: jobResult.records[0].get('name'),
-            displayName: jobResult.records[0].get('name')
+            displayName: jobResult.records[0].get('displayName')
           };
+          console.log('returning job result:', result);
+          return result;
         }
 
         // Check for experience relationship
         const expResult = await session.run(`
           MATCH (q:Question {id: $id})-[:TESTS_FOR]->(e:Experience)
-          RETURN e.id as name, 'experience' as type
+          RETURN e.id as name, e.id as rawName, 'experience' as type
         `, { id: parent.id });
         
+        console.log('expResult:', expResult.records.length);
         if (expResult.records.length > 0) {
-          const experienceName = expResult.records[0].get('name').replace(/_/g, ' ');
-          return {
+          const rawName = expResult.records[0].get('rawName');
+          const displayName = rawName.replace(/_/g, ' ');
+          const result = {
             type: 'experience',
-            name: expResult.records[0].get('name'),
-            displayName: experienceName
+            name: rawName,
+            displayName: displayName
           };
+          console.log('returning experience result:', result);
+          return result;
         }
 
         // Check for project relationship
         const projResult = await session.run(`
           MATCH (q:Question {id: $id})-[:TESTS_FOR]->(p:Project)
-          RETURN p.id as name, 'project' as type
+          RETURN p.id as name, p.id as rawName, 'project' as type
         `, { id: parent.id });
         
+        console.log('projResult:', projResult.records.length);
         if (projResult.records.length > 0) {
-          const projectName = projResult.records[0].get('name').replace(/_/g, ' ');
-          return {
+          const rawName = projResult.records[0].get('rawName');
+          const displayName = rawName.replace(/_/g, ' ');
+          const result = {
             type: 'project',
-            name: projResult.records[0].get('name'),
-            displayName: projectName
+            name: rawName,
+            displayName: displayName
           };
+          console.log('returning project result:', result);
+          return result;
         }
 
-        // Fallback to source field
+        // Fallback to source field - check if it matches our expected types
         const source = parent.source || 'generated';
-        return {
-          type: source,
+        console.log('falling back to source field:', source);
+        
+        let displayName = source;
+        let type = source;
+        
+        // Handle specific source types that don't have relationships yet
+        if (source === 'experience' || source === 'project') {
+          // If source indicates experience/project but no relationship exists,
+          // this might be a newly generated question not yet saved
+          displayName = source.charAt(0).toUpperCase() + source.slice(1);
+          type = source;
+        } else if (source === 'job') {
+          displayName = 'Job Description';
+          type = 'job';
+        } else if (source === 'custom') {
+          displayName = 'Custom';
+          type = 'custom';
+        } else {
+          displayName = 'Generated';
+          type = 'generated';
+        }
+        
+        const result = {
+          type,
           name: source,
-          displayName: source === 'seeded' ? 'Generated' : source.charAt(0).toUpperCase() + source.slice(1)
+          displayName
         };
+        console.log('returning fallback result:', result);
+        return result;
       } finally {
         await session.close();
       }
