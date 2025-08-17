@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_QUESTIONS_PAGINATED } from '../graphql/queries';
 import { Question } from '../types';
+import { useQuestionsState } from './useQuestionsState';
 
 export interface QuestionsData {
   // Data
@@ -41,51 +41,39 @@ export interface QuestionsData {
   setSortField: (field: string) => void;
   setSortOrder: (order: string) => void;
   refetch: () => void;
+  resetState: () => void;
 }
 
 export const useQuestionsPaginated = (): QuestionsData => {
-  // State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [jobTitleFilter, setJobTitleFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [hasRecordingsFilter, setHasRecordingsFilter] = useState<boolean | null>(null);
-  const [sortField, setSortField] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  // Use persistent state hook
+  const persistentState = useQuestionsState();
 
-  // GraphQL Query
+  // GraphQL Query with persistent state
   const { data, loading, error, refetch } = useQuery(GET_QUESTIONS_PAGINATED, {
     variables: {
-      limit: parseInt(itemsPerPage.toString()),
-      offset: parseInt(((currentPage - 1) * itemsPerPage).toString()),
+      limit: parseInt(persistentState.itemsPerPage.toString()),
+      offset: parseInt(((persistentState.currentPage - 1) * persistentState.itemsPerPage).toString()),
       filters: {
-        searchTerm: searchTerm || undefined,
-        categoryId: categoryFilter || undefined,
-        companyFilter: companyFilter || undefined,
-        jobTitleFilter: jobTitleFilter || undefined,
-        sourceFilter: sourceFilter !== 'all' ? sourceFilter : undefined,
-        hasRecordings: hasRecordingsFilter
+        searchTerm: persistentState.searchTerm || undefined,
+        categoryId: persistentState.categoryFilter || undefined,
+        companyFilter: persistentState.companyFilter || undefined,
+        jobTitleFilter: persistentState.jobTitleFilter || undefined,
+        sourceFilter: persistentState.sourceFilter !== 'all' ? persistentState.sourceFilter : undefined,
+        hasRecordings: persistentState.hasRecordingsFilter
       },
       sort: {
-        field: sortField,
-        order: sortOrder
+        field: persistentState.sortField,
+        order: persistentState.sortOrder
       }
     },
-    fetchPolicy: 'cache-and-network'
+    fetchPolicy: 'cache-first', // Use cache first for better performance
+    errorPolicy: 'all'
   });
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter]);
 
   // Derived values
   const questions = data?.questions?.questions || [];
   const totalCount = data?.questions?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const totalPages = Math.ceil(totalCount / persistentState.itemsPerPage);
   const hasNextPage = data?.questions?.hasNextPage || false;
   const hasPreviousPage = data?.questions?.hasPreviousPage || false;
 
@@ -97,35 +85,36 @@ export const useQuestionsPaginated = (): QuestionsData => {
     error,
     
     // Pagination
-    currentPage,
-    itemsPerPage,
+    currentPage: persistentState.currentPage,
+    itemsPerPage: persistentState.itemsPerPage,
     totalPages,
     hasNextPage,
     hasPreviousPage,
     
     // Filters
-    searchTerm,
-    categoryFilter,
-    companyFilter,
-    jobTitleFilter,
-    sourceFilter,
-    hasRecordingsFilter,
+    searchTerm: persistentState.searchTerm,
+    categoryFilter: persistentState.categoryFilter,
+    companyFilter: persistentState.companyFilter,
+    jobTitleFilter: persistentState.jobTitleFilter,
+    sourceFilter: persistentState.sourceFilter,
+    hasRecordingsFilter: persistentState.hasRecordingsFilter,
     
     // Sorting
-    sortField,
-    sortOrder,
+    sortField: persistentState.sortField,
+    sortOrder: persistentState.sortOrder,
     
     // Actions
-    setCurrentPage,
-    setItemsPerPage,
-    setSearchTerm,
-    setCategoryFilter,
-    setCompanyFilter,
-    setJobTitleFilter,
-    setSourceFilter,
-    setHasRecordingsFilter,
-    setSortField,
-    setSortOrder,
+    setCurrentPage: persistentState.setCurrentPage,
+    setItemsPerPage: persistentState.setItemsPerPage,
+    setSearchTerm: persistentState.setSearchTerm,
+    setCategoryFilter: persistentState.setCategoryFilter,
+    setCompanyFilter: persistentState.setCompanyFilter,
+    setJobTitleFilter: persistentState.setJobTitleFilter,
+    setSourceFilter: persistentState.setSourceFilter,
+    setHasRecordingsFilter: persistentState.setHasRecordingsFilter,
+    setSortField: persistentState.setSortField,
+    setSortOrder: persistentState.setSortOrder,
     refetch,
+    resetState: persistentState.resetState,
   };
 };

@@ -4,11 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question } from '../../types';
-import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2 } from 'lucide-react';
+import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2, RotateCcw } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { Pagination } from '../ui/Pagination';
 import { CollapsibleText } from '../ui/CollapsibleText';
-
 import { QuestionsData } from '../../hooks/useQuestions';
 
 interface QuestionsTableProps {
@@ -47,6 +46,7 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
     setSortField,
     setSortOrder,
     refetch,
+    resetState,
   } = questionsData;
 
   const { data: categoriesData } = useQuery(GET_CATEGORIES);
@@ -214,6 +214,9 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
     return <ErrorMessage message="Failed to load questions" />;
   }
 
+  const hasActiveFilters = searchTerm || categoryFilter || companyFilter || 
+                          jobTitleFilter || sourceFilter !== 'all' || hasRecordingsFilter !== null;
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -232,6 +235,7 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
           </div>
         )}
         
+        {/* Filter Controls */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <input
             type="text"
@@ -297,6 +301,22 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
             <option value="false">Without Recordings</option>
           </select>
         </div>
+
+        {/* Filter Status and Reset */}
+        {hasActiveFilters && (
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm text-gray-600">
+              Filters active - showing {questions.length} of {totalCount} questions
+            </span>
+            <button
+              onClick={resetState}
+              className="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Reset Filters
+            </button>
+          </div>
+        )}
 
         {selectedIds.size > 0 && (
           <div className="mt-4 flex items-center justify-between">
@@ -500,10 +520,7 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
           onPageChange={setCurrentPage}
           itemsPerPage={itemsPerPage}
           totalItems={totalCount}
-          onItemsPerPageChange={(newItemsPerPage) => {
-            setItemsPerPage(newItemsPerPage);
-            setCurrentPage(1);
-          }}
+          onItemsPerPageChange={setItemsPerPage}
         />
       )}
     </div>
