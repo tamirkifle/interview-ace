@@ -1,67 +1,65 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
-import { GET_QUESTIONS_PAGINATED, GET_CATEGORIES } from '../../graphql/queries';
+import { GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
-import { Question, Job } from '../../types';
+import { Question } from '../../types';
 import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2 } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { Pagination } from '../ui/Pagination';
 import { CollapsibleText } from '../ui/CollapsibleText';
-import { format, parseISO, isValid } from 'date-fns';
 
-type SortField = 'text' | 'createdAt' | 'recordings' | 'difficulty';
-type SortOrder = 'asc' | 'desc';
-type FilterSource = 'all' | 'generated' | 'custom' | 'job' | 'experience' | 'project';
+import { QuestionsData } from '../../hooks/useQuestions';
 
-export const QuestionsTable = () => {
+interface QuestionsTableProps {
+  questionsData: QuestionsData;
+}
+
+export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [companyFilter, setCompanyFilter] = useState<string>('');
-  const [jobTitleFilter, setJobTitleFilter] = useState<string>('');
-  const [sourceFilter, setSourceFilter] = useState<FilterSource>('all');
-  const [hasRecordingsFilter, setHasRecordingsFilter] = useState<boolean | null>(null);
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-  
-  const { data, loading, error } = useQuery(GET_QUESTIONS_PAGINATED, {
-    variables: {
-      limit: parseInt(itemsPerPage.toString()),
-      offset: parseInt(((currentPage - 1) * itemsPerPage).toString()),
-      filters: {
-        searchTerm: searchTerm || undefined,
-        categoryId: categoryFilter || undefined,
-        companyFilter: companyFilter || undefined,
-        jobTitleFilter: jobTitleFilter || undefined,
-        sourceFilter: sourceFilter !== 'all' ? sourceFilter : undefined,
-        hasRecordings: hasRecordingsFilter
-      },
-      sort: {
-        field: sortField,
-        order: sortOrder
-      }
-    },
-    fetchPolicy: 'cache-and-network'
-  });
+
+  const {
+    questions,
+    totalCount,
+    loading,
+    error,
+    currentPage,
+    itemsPerPage,
+    totalPages,
+    searchTerm,
+    categoryFilter,
+    companyFilter,
+    jobTitleFilter,
+    sourceFilter,
+    hasRecordingsFilter,
+    sortField,
+    sortOrder,
+    setCurrentPage,
+    setItemsPerPage,
+    setSearchTerm,
+    setCategoryFilter,
+    setCompanyFilter,
+    setJobTitleFilter,
+    setSourceFilter,
+    setHasRecordingsFilter,
+    setSortField,
+    setSortOrder,
+    refetch,
+  } = questionsData;
+
   const { data: categoriesData } = useQuery(GET_CATEGORIES);
+  const categories = categoriesData?.categories || [];
 
   const [deleteQuestions] = useMutation(DELETE_QUESTIONS, {
     onCompleted: () => {
-      // Refetch current page after deletion
       setSelectedIds(new Set());
+      refetch();
     }
   });
-  
-  const questions = data?.questions?.questions || [];
-  const totalCount = data?.questions?.totalCount || 0;
-  const categories = categoriesData?.categories || [];
-  
-  // Extract unique companies and job titles from current page
+
+  // Extract unique companies and job titles from current questions  
   const uniqueCompanies: string[] = useMemo(() => {
     const companies = new Set<string>();
     questions.forEach((q: Question) => {
@@ -81,78 +79,8 @@ export const QuestionsTable = () => {
     });
     return Array.from(titles).sort();
   }, [questions]);
-  
-  const parseDate = (dateValue: any): Date => {
-    if (!dateValue) return new Date(0);
-    
-    if (dateValue && typeof dateValue === 'object') {
-      if (dateValue.year && dateValue.month && dateValue.day) {
-        return new Date(dateValue.year, dateValue.month - 1, dateValue.day);
-      }
-      if (dateValue.toString) {
-        const dateStr = dateValue.toString();
-        const date = parseISO(dateStr);
-        if (isValid(date)) return date;
-      }
-    }
-    
-    if (typeof dateValue === 'string') {
-      const date = parseISO(dateValue);
-      if (isValid(date)) return date;
-    }
-    
-    const date = new Date(dateValue);
-    if (isValid(date)) return date;
-    
-    return new Date(0);
-  };
-  
-  const formatDate = (dateValue: any): string => {
-    if (!dateValue) return 'N/A';
-    try {
-      if (dateValue && typeof dateValue === 'object') {
-        if (dateValue.year && dateValue.month && dateValue.day) {
-          const date = new Date(dateValue.year, dateValue.month - 1, dateValue.day);
-          return format(date, 'MMM d, yyyy');
-        }
-        if (dateValue.toString) {
-          const dateStr = dateValue.toString();
-          const date = parseISO(dateStr);
-          if (isValid(date)) {
-            return format(date, 'MMM d, yyyy');
-          }
-        }
-      }
-      
-      if (typeof dateValue === 'string') {
-        const date = parseISO(dateValue);
-        if (isValid(date)) {
-          return format(date, 'MMM d, yyyy');
-        }
-      }
-      
-      const date = new Date(dateValue);
-      if (isValid(date)) {
-        return format(date, 'MMM d, yyyy');
-      }
-      
-      return 'Invalid date';
-    } catch (error) {
-      console.error('Date formatting error:', error, dateValue);
-      return 'Invalid date';
-    }
-  };
-  
-  // Remove client-side filtering since it's now done server-side
-  const paginatedQuestions = questions;
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, categoryFilter, companyFilter, jobTitleFilter, sourceFilter, hasRecordingsFilter]);
-
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: string) => {
     if (field === sortField) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -162,10 +90,10 @@ export const QuestionsTable = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === paginatedQuestions.length) {
+    if (selectedIds.size === questions.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(paginatedQuestions.map(q => q.id)));
+      setSelectedIds(new Set(questions.map(q => q.id)));
     }
   };
 
@@ -194,7 +122,6 @@ export const QuestionsTable = () => {
           ids: Array.from(selectedIds)
         }
       });
-      setSelectedIds(new Set());
     } catch (error: any) {
       console.error('Failed to delete questions:', error);
       const errorMessage = error.graphQLErrors?.[0]?.message || 
@@ -349,7 +276,7 @@ export const QuestionsTable = () => {
 
           <select 
             value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as FilterSource)}
+            onChange={(e) => setSourceFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="all">All Sources</option>
@@ -395,7 +322,7 @@ export const QuestionsTable = () => {
                 <th className="w-12 px-6 py-3">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === paginatedQuestions.length && paginatedQuestions.length > 0}
+                    checked={selectedIds.size === questions.length && questions.length > 0}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                   />
@@ -453,7 +380,7 @@ export const QuestionsTable = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedQuestions.map((question: Question) => (
+              {questions.map((question: Question) => (
                 <tr key={question.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <input
@@ -513,7 +440,7 @@ export const QuestionsTable = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-500">
-                      {formatDate(question.createdAt)}
+                      {new Date(question.createdAt).toLocaleDateString()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -552,17 +479,19 @@ export const QuestionsTable = () => {
           </table>
         </div>
 
-        {paginatedQuestions.length === 0 && (
+        {questions.length === 0 && (
           <div className="text-center py-12">
             <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">No questions found</p>
-            {paginatedQuestions.length === 0 && (
+            {totalCount > 0 && (
               <p className="text-sm text-gray-400 mt-2">
-                {totalCount > 0 ? 'Try a different page or adjust your filters' : 'No questions found'}
+                Try a different page or adjust your filters
               </p>
             )}
           </div>
         )}
+      </div>
+
       {/* Pagination */}
       {totalPages > 1 && (
         <Pagination
@@ -577,7 +506,6 @@ export const QuestionsTable = () => {
           }}
         />
       )}
-      </div>
     </div>
   );
 };

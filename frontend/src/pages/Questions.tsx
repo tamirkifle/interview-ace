@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@apollo/client';
-import { MessageCircleQuestion, Sparkles, Plus, Library, FileText } from 'lucide-react';
-import { GET_QUESTIONS_PAGINATED } from '../graphql/queries';
+import { useMutation } from '@apollo/client';
+import { MessageCircleQuestion, Sparkles, Plus, FileText } from 'lucide-react';
 import { CREATE_CUSTOM_QUESTION } from '../graphql/mutations';
 import { LoadingSpinner } from '../components/ui';
 import { QuestionsTable } from '../components/library/QuestionsTable';
@@ -11,38 +10,25 @@ import { ResumeQuestionGenerator } from '../components/practice/ResumeQuestionGe
 import { CustomQuestion } from '../components/practice/CustomQuestion';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { GraphQLErrorBoundary } from '../components/GraphQLErrorBoundary';
-import { Question, ResolvedGeneratedQuestion, QuestionGenerationResult } from '../types';
+import { useQuestionsPaginated } from '../hooks/useQuestions';
+import { ResolvedGeneratedQuestion, QuestionGenerationResult } from '../types';
 import { useAPIKeys } from '../hooks/useAPIKeys';
 
 export const Questions = () => {
+  const questionsData = useQuestionsPaginated();
+  const { totalCount, loading, error, refetch } = questionsData;
   const { getAPIKeyStatus } = useAPIKeys();
   const [activeTab, setActiveTab] = useState<'library' | 'generate' | 'custom' | 'resume'>('library');
   const [generationResult, setGenerationResult] = useState<QuestionGenerationResult | null>(null);
 
-  // Get total count for tab display
-  const { data, loading, error, refetch } = useQuery(GET_QUESTIONS_PAGINATED, {
-    variables: {
-      limit: 1, // Just get 1 question to get totalCount
-      offset: 0,
-      filters: {},
-      sort: { field: 'createdAt', order: 'desc' }
-    }
-  });
-
-  const totalQuestions = data?.questions?.totalCount || 0;
   const apiKeyStatus = getAPIKeyStatus();
   const isLLMConfigured = apiKeyStatus.llm.available;
 
   const [createCustomQuestion] = useMutation(CREATE_CUSTOM_QUESTION, {
     onCompleted: () => {
-      // Refresh the table after creating a question
       refetch();
     },
   });
-
-  const handleRetry = () => {
-    refetch();
-  };
 
   const handleQuestionsGenerated = (result: QuestionGenerationResult) => {
     setGenerationResult(result);
@@ -76,7 +62,7 @@ export const Questions = () => {
 
   return (
     <ErrorBoundary>
-      <GraphQLErrorBoundary error={error} onRetry={handleRetry}>
+      <GraphQLErrorBoundary error={error} onRetry={refetch}>
         <div>
           {/* Header */}
           <div className="text-center mb-8">
@@ -98,8 +84,8 @@ export const Questions = () => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Library className="w-4 h-4 inline mr-2" />
-                  Question Library ({totalQuestions})
+                  <MessageCircleQuestion className="w-4 h-4 inline mr-2" />
+                  Question Library ({totalCount})
                 </button>
                 <button
                   onClick={() => setActiveTab('generate')}
@@ -152,7 +138,7 @@ export const Questions = () => {
           <div>
             {activeTab === 'library' && (
               <div>
-                {totalQuestions === 0 ? (
+                {totalCount === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                     <MessageCircleQuestion className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No questions yet</h3>
@@ -177,7 +163,7 @@ export const Questions = () => {
                     </div>
                   </div>
                 ) : (
-                  <QuestionsTable />
+                  <QuestionsTable questionsData={questionsData} />
                 )}
               </div>
             )}
@@ -189,7 +175,7 @@ export const Questions = () => {
                     result={generationResult}
                     onClose={() => setGenerationResult(null)}
                     onSaveQuestion={handleSaveGeneratedQuestion}
-                    onRecordAnswer={() => {}} // Questions page doesn't need recording
+                    onRecordAnswer={() => {}}
                   />
                 ) : (
                   <QuestionGenerator
@@ -207,7 +193,7 @@ export const Questions = () => {
                     result={generationResult}
                     onClose={() => setGenerationResult(null)}
                     onSaveQuestion={handleSaveGeneratedQuestion}
-                    onRecordAnswer={() => {}} // Questions page doesn't need recording
+                    onRecordAnswer={() => {}}
                   />
                 ) : (
                   <ResumeQuestionGenerator
