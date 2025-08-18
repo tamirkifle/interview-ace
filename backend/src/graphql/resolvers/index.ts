@@ -11,8 +11,6 @@ import { JobService } from '../../services/jobService';
 import { GraphQLError } from 'graphql';
 import { neo4jConnection } from '../../db/neo4j';
 import { Question } from '../../services/storyService';
-import { Record } from 'neo4j-driver';
-import { processRecordProperties } from '../../utils/dateTime';
 
 const storyService = new StoryService();
 const categoryService = new CategoryService();
@@ -89,25 +87,7 @@ export const resolvers = {
       return jobService.getQuestionsForCompany(company);
     },
     questionsForStories: async (_: any, { storyIds }: { storyIds: string[] }) => {
-      if (!storyIds || storyIds.length === 0) {
-        return [];
-      }
-      
-      const session = await neo4jConnection.getSession();
-      try {
-        const result = await session.run(`
-          MATCH (s:Story)-[:ANSWERS]->(q:Question)
-          WHERE s.id IN $storyIds
-          RETURN DISTINCT q
-          ORDER BY q.text
-        `, { storyIds });
-        
-        return result.records.map((record: Record) => 
-          processRecordProperties(record.get('q').properties)
-        );
-      } finally {
-        await session.close();
-      }
+      return questionService.getQuestionsForStories(storyIds);
     },
     experiences: async () => {
       return experienceService.getAllExperiences();

@@ -2,6 +2,7 @@ import { neo4jConnection } from '../db/neo4j';
 import { QueryResult, Record } from 'neo4j-driver';
 import { Question, Category, Trait, Recording, Job } from './storyService';
 import { v4 as uuidv4 } from 'uuid';
+import { processRecordProperties } from '../utils/dateTime';
 
 export class QuestionService {
   async getAllQuestions(): Promise<Question[]> {
@@ -447,6 +448,28 @@ export class QuestionService {
       }
   
       return result.records[0].get('q').properties;
+    } finally {
+      await session.close();
+    }
+  }
+  
+  async getQuestionsForStories(storyIds: string[]) {
+    if (!storyIds || storyIds.length === 0) {
+      return [];
+    }
+    
+    const session = await neo4jConnection.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (s:Story)-[:ANSWERS]->(q:Question)
+        WHERE s.id IN $storyIds
+        RETURN DISTINCT q
+        ORDER BY q.text
+      `, { storyIds });
+      
+      return result.records.map((record: Record) => 
+        processRecordProperties(record.get('q').properties)
+      );
     } finally {
       await session.close();
     }

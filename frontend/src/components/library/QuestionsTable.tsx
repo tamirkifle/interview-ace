@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question } from '../../types';
-import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2, RotateCcw, Play } from 'lucide-react';
+import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, RotateCcw, Play } from 'lucide-react';
+import { getSourceBadge, getDifficultyBadge } from '../ui/Badge';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { Pagination } from '../ui/Pagination';
 import { CollapsibleText } from '../ui/CollapsibleText';
@@ -142,76 +143,7 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
     });
   };
 
-  const getSourceBadge = (question: any) => {
-    const sourceInfo = question.sourceInfo;
-    if (!sourceInfo) return null;
-
-    const getSourceConfig = () => {
-      switch (sourceInfo.type) {
-        case 'job':
-          return {
-            icon: <Building2 className="w-3 h-3" />,
-            color: '#3B82F6',
-            label: sourceInfo.displayName
-          };
-        case 'experience':
-          return {
-            icon: <Briefcase className="w-3 h-3" />,
-            color: '#8B5CF6',
-            label: sourceInfo.displayName
-          };
-        case 'project':
-          return {
-            icon: <Code className="w-3 h-3" />,
-            color: '#10B981',
-            label: sourceInfo.displayName
-          };
-        case 'custom':
-          return {
-            icon: null,
-            color: '#F59E0B',
-            label: 'Custom'
-          };
-        default:
-          return {
-            icon: null,
-            color: '#6B7280',
-            label: 'Generated'
-          };
-      }
-    };
-
-    const config = getSourceConfig();
-    
-    return (
-      <Badge
-        variant="square"
-        color={config.color}
-        size="xs"
-        className="flex items-center gap-1"
-      >
-        {config.icon}
-        <span className="max-w-[120px]">{config.label}</span>
-      </Badge>
-    );
-  };
-
-  const getDifficultyBadge = (difficulty: string) => {
-    const colors: { [key: string]: string } = {
-      easy: '#059669',
-      medium: '#EA580C',
-      hard: '#DC2626'
-    };
-    return (
-      <Badge
-        variant="colored"
-        color={colors[difficulty]}
-        size="xs"
-      >
-        {difficulty}
-      </Badge>
-    );
-  };
+  
 
   if (loading && questions.length === 0) {
     return (

@@ -7,6 +7,7 @@ import { MatchingStories } from './MatchingStories';
 import { SelectedStoryDetails } from './SelectedStoryDetails';
 import { VideoRecorder } from '../recording';
 import { StoryCreationModal } from './StoryCreationModal';
+import { getSourceBadge } from '../ui/Badge';
 
 interface RecordingData {
   blob: Blob;
@@ -146,6 +147,9 @@ export const PracticeSession = ({
               <span className="text-sm text-gray-500">
                 Commonality: {currentQuestion.commonality}/10
               </span>
+              <>
+              {getSourceBadge(currentQuestion)}
+              </>
               {answeredQuestions.has(currentIndex) && (
                 <div className="flex items-center text-green-600">
                   <CheckCircle className="w-4 h-4 mr-1" />
@@ -193,8 +197,26 @@ export const PracticeSession = ({
                   {category.name}
                 </Badge>
               ))}
+
+          {currentQuestion.traits && currentQuestion.traits.length > 0 && (
+              <>              
+              {currentQuestion.traits.map((trait) => (
+                <Badge
+                  key={trait.id}
+                  variant="square"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  {trait.name}
+                </Badge>
+              ))}
+            </>
+          )}
             </div>
           )}
+          
+
+          
 
           {/* Matching Stories */}
           <div className="mb-6">

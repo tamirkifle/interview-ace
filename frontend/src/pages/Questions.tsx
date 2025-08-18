@@ -33,33 +33,12 @@ export const Questions = () => {
   const [createCustomQuestion] = useMutation(CREATE_CUSTOM_QUESTION, {
     onCompleted: () => {
       refetch();
-    },
-    // Force cache update for sourceInfo
-    update: (cache, { data }) => {
-      if (data?.createCustomQuestion) {
-        // Evict the question from cache to force refetch of sourceInfo
-        cache.evict({ 
-          id: cache.identify(data.createCustomQuestion),
-          fieldName: 'sourceInfo'
-        });
-      }
     }
   });
 
   const [createQuestionsBulk] = useMutation(CREATE_QUESTIONS_BULK, {
     onCompleted: () => {
       refetch();
-    },
-    // Force cache update for all questions
-    update: (cache, { data }) => {
-      if (data?.createQuestionsBulk) {
-        data.createQuestionsBulk.forEach((question: any) => {
-          cache.evict({ 
-            id: cache.identify(question),
-            fieldName: 'sourceInfo'
-          });
-        });
-      }
     }
   });
 

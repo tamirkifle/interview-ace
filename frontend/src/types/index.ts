@@ -68,8 +68,15 @@ export interface Question {
   traits: Trait[];
   recordings?: Recording[];
   source?: string;
+  sourceInfo?: SourceInfo;
   reasoning?: string;
   job?: Job;
+}
+
+export interface SourceInfo {
+  type: string;
+  name: string;
+  displayName: string;
 }
 
 export interface StoryMatch {
