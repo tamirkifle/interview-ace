@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useLazyQuery } from '@apollo/client';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Play, Target, RotateCcw, ArrowRight, BookOpen, MessageCircleQuestion, Users } from 'lucide-react';
+import { Play, Target, RotateCcw, ArrowRight, BookOpen, MessageCircleQuestion } from 'lucide-react';
 import { GET_QUESTIONS, GET_QUESTIONS_FOR_STORIES, GET_STORIES } from '../graphql/queries';
 import { LoadingSpinner, Badge } from '../components/ui';
-import { CollapsibleText } from '../components/ui/CollapsibleText';
 import { PracticeSession } from '../components/practice/PracticeSession';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { GraphQLErrorBoundary } from '../components/GraphQLErrorBoundary';
@@ -26,11 +25,6 @@ export const Practice = () => {
   
   const [questionLimit, setQuestionLimit] = useState<number | 'all'>(5);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [customPracticeInfo, setCustomPracticeInfo] = useState<{
-    type: 'questions' | 'stories';
-    count: number;
-    items: Question[] | Story[];
-  } | null>(null);
 
   const [getQuestionsForStories, { loading: loadingStoryQuestions, error: storyQuestionsError }] = useLazyQuery(GET_QUESTIONS_FOR_STORIES);
 
@@ -55,26 +49,40 @@ export const Practice = () => {
   const stories = storiesData?.stories || [];
 
   // Handle custom practice setup from navigation state
-  useEffect(() => {
-    if (state?.selectedQuestionIds || state?.selectedStoryIds) {
-      if (state.selectedQuestionIds) {
-        // Filter questions by selected IDs
-        const selectedQuestions = questions.filter((q: Question) => state.selectedQuestionIds!.includes(q.id));
-        setCustomPracticeInfo({
-          type: 'questions',
-          count: selectedQuestions.length,
-          items: selectedQuestions
-        });
-      } else if (state.selectedStoryIds) {
-        // Get selected stories info
-        const selectedStories = stories.filter((s: Story) => state.selectedStoryIds!.includes(s.id));
-        setCustomPracticeInfo({
-          type: 'stories',
-          count: selectedStories.length,
-          items: selectedStories
-        });
-      }
+  const customPracticeInfo: {
+    type: 'questions' | 'stories';
+    count: number;
+    items: Question[] | Story[];
+  } | null = useMemo(() => {
+    if (!state?.selectedQuestionIds && !state?.selectedStoryIds) {
+      return null;
     }
+
+    if (state.selectedQuestionIds && questions.length > 0) {
+      const selectedQuestions = questions.filter((q: Question) => 
+        state.selectedQuestionIds!.includes(q.id)
+      );
+      if (selectedQuestions.length === 0) return null; // Ensure questions are loaded
+      return {
+        type: 'questions' as const,
+        count: selectedQuestions.length,
+        items: selectedQuestions,
+      };
+    }
+
+    if (state.selectedStoryIds && stories.length > 0) {
+      const selectedStories = stories.filter((s: Story) => 
+        state.selectedStoryIds!.includes(s.id)
+      );
+      if (selectedStories.length === 0) return null; // Ensure stories are loaded
+      return {
+        type: 'stories' as const,
+        count: selectedStories.length,
+        items: selectedStories,
+      };
+    }
+
+    return null;
   }, [state, questions, stories]);
 
   const handleStartNewSession = () => {
@@ -144,14 +152,13 @@ export const Practice = () => {
 
   const handleEndSession = () => {
     endSession();
-    // Clear navigation state
-    navigate('/practice', { replace: true });
-    setCustomPracticeInfo(null);
+    // Clear navigation state to exit custom mode
+    navigate('/practice', { replace: true, state: null });
   };
 
   const handleCancelCustomPractice = () => {
-    navigate('/practice', { replace: true });
-    setCustomPracticeInfo(null);
+    // Clear navigation state to exit custom mode
+    navigate('/practice', { replace: true, state: null });
   };
 
   const handleRetry = () => {
@@ -161,7 +168,7 @@ export const Practice = () => {
   if (loading || loadingStoryQuestions) {
     return (
       <div className="flex items-center justify-center min-h-96">
-        <LoadingSpinner size="lg" text="Loading questions..." />
+        <LoadingSpinner size="lg" text="Loading practice session..." />
       </div>
     );
   }
@@ -180,7 +187,7 @@ export const Practice = () => {
                   Something went wrong during your practice session.
                 </p>
                 <button
-                  onClick={endSession}
+                  onClick={handleEndSession}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
                 >
                   End Session
