@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { GET_CATEGORIES } from '../../graphql/queries';
 import { DELETE_QUESTIONS } from '../../graphql/mutations';
 import { Question } from '../../types';
-import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2, RotateCcw } from 'lucide-react';
+import { Edit3, Trash2, MessageCircleQuestion, ChevronUp, ChevronDown, AlertCircle, X, Briefcase, Code, Building2, RotateCcw, Play } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { Pagination } from '../ui/Pagination';
 import { CollapsibleText } from '../ui/CollapsibleText';
@@ -129,6 +129,17 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
                           'Failed to delete questions';
       setDeleteError(errorMessage);
     }
+  };
+
+  const handlePracticeSelected = () => {
+    if (selectedIds.size === 0) return;
+    
+    // Navigate to practice page with selected question IDs
+    navigate('/practice', {
+      state: {
+        selectedQuestionIds: Array.from(selectedIds)
+      }
+    });
   };
 
   const getSourceBadge = (question: any) => {
@@ -323,13 +334,22 @@ export const QuestionsTable = ({ questionsData }: QuestionsTableProps) => {
             <span className="text-sm text-gray-600">
               {selectedIds.size} question{selectedIds.size !== 1 ? 's' : ''} selected
             </span>
-            <button
-              onClick={handleDeleteSelected}
-              className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Delete Selected
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handlePracticeSelected}
+                className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Play className="w-4 h-4 mr-1" />
+                Start Practice with Selected
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete Selected
+              </button>
+            </div>
           </div>
         )}
       </div>

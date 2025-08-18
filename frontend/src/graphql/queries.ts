@@ -346,3 +346,29 @@ export const SEARCH_RECORDINGS = gql`
     }
   }
 `;
+
+export const GET_QUESTIONS_FOR_STORIES = gql`
+  query GetQuestionsForStories($storyIds: [ID!]!) {
+    questionsForStories(storyIds: $storyIds) {
+      id
+      text
+      difficulty
+      commonality
+      createdAt
+      updatedAt
+      source
+      reasoning
+      categories {
+        id
+        name
+        color
+        description
+      }
+      traits {
+        id
+        name
+        description
+      }
+    }
+  }
+`;

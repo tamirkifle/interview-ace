@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { GET_STORIES, GET_CATEGORIES } from '../../graphql/queries';
 import { Story, Category } from '../../types';
-import { Edit3, Trash2, BookOpen, ChevronUp, ChevronDown, AlertCircle, X, Search } from 'lucide-react';
+import { Edit3, Trash2, BookOpen, ChevronUp, ChevronDown, AlertCircle, X, Search, Play } from 'lucide-react';
 import { Badge, LoadingSpinner, ErrorMessage } from '../ui';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -138,6 +138,17 @@ export const StoriesList = () => {
     navigate(`/stories/${storyId}/edit`);
   };
 
+  const handlePracticeSelected = () => {
+    if (selectedIds.size === 0) return;
+    
+    // Navigate to practice page with selected story IDs
+    navigate('/practice', {
+      state: {
+        selectedStoryIds: Array.from(selectedIds)
+      }
+    });
+  };
+
   if (loading && stories.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -198,12 +209,21 @@ export const StoriesList = () => {
             <span className="text-sm text-gray-600">
               {selectedIds.size} stor{selectedIds.size !== 1 ? 'ies' : 'y'} selected
             </span>
-            <button
-              className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Delete Selected
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handlePracticeSelected}
+                className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Play className="w-4 h-4 mr-1" />
+                Practice with Selected
+              </button>
+              <button
+                className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete Selected
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -268,7 +288,6 @@ export const StoriesList = () => {
                 <tr 
                   key={story.id} 
                   className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleRowClick(story.id)}
                 >
                   <td className="px-6 py-4">
                     <input

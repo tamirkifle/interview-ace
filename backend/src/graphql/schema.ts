@@ -164,6 +164,7 @@ export const typeDefs = gql`
     ): [Recording!]!
     recordingsByQuestion(questionId: ID!): [Recording!]!
     questionsForCompany(company: String!): [Question!]!
+    questionsForStories(storyIds: [ID!]!): [Question!]!
     experiences: [Experience!]!
     experience(id: ID!): Experience
     projects: [Project!]!
