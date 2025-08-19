@@ -1,4 +1,4 @@
-import { LLMContext, LLMProvider, GenerateQuestionsRequest, QuestionGenerationResult, LLMError, GeneratedQuestion, ResolvedGeneratedQuestion } from './types';
+import { LLMContext, LLMProvider, GenerateQuestionsRequest, QuestionGenerationResult, LLMError, ResolvedGeneratedQuestion } from './types';
 import { OpenAIProvider } from './providers/openai';
 import { AnthropicProvider } from './providers/anthropic';
 import { GeminiProvider } from './providers/gemini';

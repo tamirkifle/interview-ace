@@ -3,7 +3,6 @@ import { useQuery } from '@apollo/client';
 import { BookOpen, Target, TrendingUp, Check, ChevronDown, ChevronUp, Folder, Tag } from 'lucide-react';
 import { GET_MATCHING_STORIES, GET_STORIES } from '../../graphql/queries';
 import { LoadingSpinner, Badge } from '../ui';
-import { CollapsibleText } from '../ui/CollapsibleText';
 import { cn } from '../../utils/cn';
 
 interface MatchingStoriesProps {
@@ -23,8 +22,8 @@ export const MatchingStories = ({ questionId, onStorySelect, selectedStoryId }: 
 
   const matchingStories = matchingData?.question?.matchingStories || [];
   const allStories = allStoriesData?.stories || [];
-  const currentQuestionCategories = matchingData?.question?.categories || [];
-  const currentQuestionTraits = matchingData?.question?.traits || [];
+  // const currentQuestionCategories = matchingData?.question?.categories || [];
+  // const currentQuestionTraits = matchingData?.question?.traits || [];
 
   // Filter relevant stories (score > 0)
   const relevantStories = matchingStories.filter((ms: any) => ms.relevanceScore > 0);

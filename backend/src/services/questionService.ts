@@ -1,5 +1,5 @@
 import { neo4jConnection } from '../db/neo4j';
-import { QueryResult, Record } from 'neo4j-driver';
+import { Record } from 'neo4j-driver';
 import { Question, Category, Trait, Recording, Job } from './storyService';
 import { v4 as uuidv4 } from 'uuid';
 import { processRecordProperties } from '../utils/dateTime';

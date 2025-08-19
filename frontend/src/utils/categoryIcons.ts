@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   BookOpen,
-  Mic,
   BarChart,
   Settings,
   type LucideIcon,

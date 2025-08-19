@@ -6,7 +6,7 @@ export class GoogleTranscriptionProvider extends BaseTranscriptionProvider {
     super(apiKey, 'google');
   }
 
-  async transcribe(audioBuffer: Buffer, mimeType: string): Promise<TranscriptionResult> {
+  async transcribe(_audioBuffer: Buffer, mimeType: string): Promise<TranscriptionResult> {
     this.validateAudioFormat(mimeType);
 
     // Google Speech-to-Text implementation

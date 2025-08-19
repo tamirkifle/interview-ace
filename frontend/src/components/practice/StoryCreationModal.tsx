@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@apollo/client';
-import { Save, X, Plus, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import { CREATE_STORY } from '../../graphql/queries';
 import { GET_STORIES } from '../../graphql/queries';
 import { LoadingSpinner, MultiSelect } from '../ui';

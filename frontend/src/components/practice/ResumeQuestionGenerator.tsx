@@ -81,7 +81,7 @@ export const ResumeQuestionGenerator = ({
   const { data: entitiesData, refetch: refetchEntities } = useQuery(GET_EXPERIENCES_AND_PROJECTS);
   
   const [processResume, { loading: processing, error: processError }] = useMutation(PROCESS_RESUME, {
-    onCompleted: (data) => {
+    onCompleted: () => {
       refetchEntities();
       setActiveTab('existing');
     }

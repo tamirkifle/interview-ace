@@ -21,7 +21,7 @@ async function seedDatabase() {
     console.log(`Found ${commands.length} commands to execute`);
 
     // Execute each command in a transaction
-    const result = await session.executeWrite((tx: ManagedTransaction) => {
+    await session.executeWrite((tx: ManagedTransaction) => {
       return Promise.all(
         commands.map(async (command, index) => {
           try {

@@ -1,8 +1,7 @@
 import { useQuery } from '@apollo/client';
 import { Plus, BookOpen } from 'lucide-react';
 import { GET_STORIES } from '../graphql/queries';
-import { Story } from '../types';
-import { ErrorMessage, SkeletonLoader, LoadingSpinner } from '../components/ui';
+import { ErrorMessage, LoadingSpinner } from '../components/ui';
 import { StoriesList } from '../components/library/StoriesList';
 import { EmptyState } from '../components/library/EmptyState';
 import { useNavigate } from 'react-router-dom';

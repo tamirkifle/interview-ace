@@ -32,7 +32,6 @@ export const PracticeSession = ({
   currentIndex,
   answeredQuestions,
   selectedStories,
-  recordings,
   onEndSession,
   onUpdateCurrentIndex,
   onUpdateAnsweredQuestions,

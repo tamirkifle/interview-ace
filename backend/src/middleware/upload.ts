@@ -5,7 +5,7 @@ import { Request } from 'express';
 const storage = multer.memoryStorage();
 
 // File filter to only accept video files
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedMimeTypes = [
         'video/webm',
         'video/mp4',

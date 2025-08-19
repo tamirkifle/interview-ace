@@ -1,7 +1,6 @@
 import { minioService } from '../minioService';
 import { transcriptionService } from './transcriptionService';
-import { TranscriptionContext, TranscriptionStatus } from './types';
-import { Readable } from 'stream';
+import { TranscriptionContext } from './types';
 
 export class TranscriptionJobProcessor {
   async processRecording(

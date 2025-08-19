@@ -1,6 +1,5 @@
 import * as Minio from 'minio';
 import { v4 as uuidv4 } from 'uuid';
-import { neo4jConnection } from '../db/neo4j';
 
 class MinioService {
   private client: Minio.Client;

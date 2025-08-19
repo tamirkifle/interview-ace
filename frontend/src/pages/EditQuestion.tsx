@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { ArrowLeft, Save } from 'lucide-react';
-import { GET_QUESTIONS, GET_CATEGORIES, GET_TRAITS } from '../graphql/queries';
+import { GET_QUESTIONS } from '../graphql/queries';
 import { UPDATE_QUESTION_FULL } from '../graphql/mutations';
 import { LoadingSpinner, ErrorMessage, MultiSelect } from '../components/ui';
 import { useCategories } from '../hooks/useCategories';

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { GET_STORIES } from '../../graphql/queries';
 import { LoadingSpinner, Badge } from '../ui';
 import { CollapsibleText } from '../ui/CollapsibleText';
-import { cn } from '../../utils/cn';
 
 interface SelectedStoryDetailsProps {
   storyId: string;

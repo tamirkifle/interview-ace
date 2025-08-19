@@ -141,7 +141,7 @@ export const resolvers = {
       return recordingService.getRecordingTranscriptionStatus(id);
     },
 
-    recordings: async (_: any, { where, orderBy }: { where?: any; orderBy?: string }) => {
+    recordings: async (_: any, { where }: { where?: any; orderBy?: string }) => {
       const filters: any = {};
       if (where) {
         if (where.createdAt_gte) filters.startDate = new Date(where.createdAt_gte);
@@ -325,7 +325,7 @@ export const resolvers = {
       try {
         const createdQuestions: Question[] = [];
         
-        await session.executeWrite(async (tx) => {
+        await session.executeWrite(async (_tx) => {
           for (const questionInput of questions) {
             const question = await questionService.createQuestion({
               text: questionInput.text.trim(),

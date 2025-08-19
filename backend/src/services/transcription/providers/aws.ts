@@ -6,7 +6,7 @@ export class AWSTranscriptionProvider extends BaseTranscriptionProvider {
     super(apiKey, 'aws');
   }
 
-  async transcribe(audioBuffer: Buffer, mimeType: string): Promise<TranscriptionResult> {
+  async transcribe(_audioBuffer: Buffer, mimeType: string): Promise<TranscriptionResult> {
     this.validateAudioFormat(mimeType);
 
     // AWS Transcribe implementation

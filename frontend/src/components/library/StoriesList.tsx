@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { GET_STORIES, GET_CATEGORIES } from '../../graphql/queries';
 import { Story, Category } from '../../types';
@@ -129,9 +129,9 @@ export const StoriesList = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleRowClick = (storyId: string) => {
-    navigate(`/stories/${storyId}`);
-  };
+  // const handleRowClick = (storyId: string) => {
+  //   navigate(`/stories/${storyId}`);
+  // };
 
   const handleEditClick = (storyId: string, event: React.MouseEvent) => {
     event.stopPropagation();
